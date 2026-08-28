@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+*.log
+.agent/
+dist/
+build/
+*.egg-info/
+demo_workspace/.agent/
+demo_workspace/
+demo_workspace/__pycache__/
+submission/
+tmp/

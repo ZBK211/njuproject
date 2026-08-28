@@ -1,0 +1,4 @@
+# Runtime uses only the Python standard library.
+# Install pytest for the test suite:
+pytest>=8.0
+
