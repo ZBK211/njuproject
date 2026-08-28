@@ -1,7 +1,7 @@
-Git仓库地址：待创建公开仓库后填写（不要填写个人姓名、学校等身份信息）。
+Git仓库地址：待创建公开仓库后填写。
 
-运行方式：Windows 下执行 `python -m venv .venv`、`.venv\\Scripts\\Activate.ps1`、`python -m pip install -r requirements.txt`，再执行 `python -m pytest -q`。无需 API Key 即可执行 `python scripts/run_demo.py` 观看离线全链路演示。接入模型时设置 OPENAI_API_KEY、OPENAI_BASE_URL、OPENAI_MODEL 后执行 `python -m coding_agent "任务" --root 工作区`。
+ForgeAgent 是我对 coding agent 最小闭环的一次实现：模型不直接“说自己改好了”，而是每轮只能输出一个 JSON 动作；主循环解析动作，调用本地工具，再把观察结果放回上下文，直到测试通过或触发明确终止条件。项目没有使用 LangChain、LlamaIndex、OpenAI Agents SDK、AutoGen、CrewAI，也没有使用服务端代码执行或文件工具。
 
-特色功能：手写 Agent 循环和 JSON 动作协议；工具定义、注册、分发与本地执行；读写/编辑/搜索文件；工作区路径隔离；命令超时、输出截断和危险命令拦截；模型输出解析失败自动反馈；上下文超限压缩；步数上限终止；本地项目记忆（memory_record/memory_read、BM25 检索、Hot Memory 注入、自动收尾记录）；可替换的 OpenAI 兼容模型适配器；无网络 FakeModel 测试覆盖工具、解析、错误恢复和终止条件。项目不依赖任何现成 Agent 框架，也不使用服务端代码执行或文件工具。
+我重点做了三层设计。第一层是执行边界：文件路径必须留在工作区内，shell 命令有超时、输出截断和危险命令拦截，API Key 只从环境变量读取。第二层是可解释循环：上下文压缩、解析失败重试、模型错误返回、最大步数停止都在代码里显式实现。第三层是项目记忆：参考 GenericAgent 和 dsh-memoir 的思路，用本地 `.agent/memory.json` 记录工作结论，生成可读的 `PROJECT_MEMORY.md`，并用中文/英文/代码标识符分词和 BM25 检索做 Hot Memory 注入。
 
-演示任务：智能体读取任务工作区，发现待实现的 FizzBuzz 函数，写入实现并运行 pytest 验证，最后汇报结果。提交视频应由本人录制，2 分钟以内、MP4、不超过 200MB；视频与本文件一起压缩提交。
+运行：`python -m pytest -q`。离线演示：`python scripts/run_demo.py`。可视化演示：`python scripts/demo_server.py` 后打开 `http://127.0.0.1:8787`。

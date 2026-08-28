@@ -12,6 +12,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python -m pytest -q
 python scripts/run_demo.py
+python scripts/demo_server.py
 ```
 
 For a real model, copy `.env.example` to a local `.env` or set the variables in the shell, then run:
@@ -45,6 +46,8 @@ PROJECT MEMORY
 ## Work Log
 - Agent run completed - Completed run using tools: list_dir, read_file, write_file, run_command.
 ```
+
+For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, runs the same offline agent workflow, and displays the transcript, generated code, pytest output, project memory, and assignment compliance checks.
 
 ## Development
 

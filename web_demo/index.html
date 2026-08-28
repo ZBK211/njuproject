@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ForgeAgent Demo</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">FA</div>
+      <div>
+        <div class="name">ForgeAgent</div>
+        <div class="caption">Inspectable coding agent</div>
+      </div>
+    </div>
+    <nav>
+      <a class="active" href="#run">运行演示</a>
+      <a href="#architecture">核心链路</a>
+      <a href="#memory">项目记忆</a>
+      <a href="#audit">合规检查</a>
+    </nav>
+    <div class="note">本页面调用本机后端。默认使用离线 DemoModel，不需要 API Key。</div>
+  </aside>
+
+  <main>
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">Local Demo</p>
+        <h1>看得见的 coding agent 全链路</h1>
+      </div>
+      <button id="runBtn" type="button">运行一次</button>
+    </section>
+
+    <section id="run" class="workspace">
+      <div class="panel task-panel">
+        <div class="panel-head">
+          <span>任务</span>
+          <span id="status" class="status idle">等待运行</span>
+        </div>
+        <textarea id="task">Implement the FizzBuzz task in the workspace and verify it with tests.</textarea>
+        <div class="metrics">
+          <div><span id="stepsMetric">0</span><small>steps</small></div>
+          <div><span id="testsMetric">-</span><small>tests</small></div>
+          <div><span id="memoryMetric">-</span><small>memory</small></div>
+        </div>
+      </div>
+
+      <div class="panel flow-panel" id="architecture">
+        <div class="panel-head">
+          <span>核心链路</span>
+          <span>JSON action loop</span>
+        </div>
+        <div class="flow" id="flow"></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
+        <div class="log" id="transcript">点击“运行一次”后显示每一轮模型动作和本地工具观察。</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>最终代码</span><span>fizzbuzz.py</span></div>
+        <pre id="codeView">尚未运行</pre>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-head"><span>测试输出</span><span>pytest</span></div>
+        <pre id="testView">尚未运行</pre>
+      </div>
+      <div class="panel" id="memory">
+        <div class="panel-head"><span>项目记忆</span><span>.agent/PROJECT_MEMORY.md</span></div>
+        <pre id="memoryView">尚未运行</pre>
+      </div>
+    </section>
+
+    <section id="audit" class="panel audit-panel">
+      <div class="panel-head"><span>题目合规检查</span><span>assignment audit</span></div>
+      <div class="audit-grid" id="auditGrid"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
