@@ -1,4 +1,4 @@
-Git仓库地址：待创建公开仓库后填写。
+Git仓库地址：https://github.com/ZBK211/njuproject
 
 ForgeAgent 是我对 coding agent 最小闭环的一次实现：模型不直接“说自己改好了”，而是每轮只能输出一个 JSON 动作；主循环解析动作，调用本地工具，再把观察结果放回上下文，直到测试通过或触发明确终止条件。项目没有使用 LangChain、LlamaIndex、OpenAI Agents SDK、AutoGen、CrewAI，也没有使用服务端代码执行或文件工具。
 
