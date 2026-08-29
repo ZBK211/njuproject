@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import argparse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -11,15 +12,29 @@ from coding_agent.config import Settings
 from coding_agent.llm import LLMError, OpenAICompatibleModel
 
 
-TASK = "Implement the FizzBuzz task in the workspace and verify it with tests."
+TASKS = {
+    "fizzbuzz": {
+        "path": "demo_workspace_template",
+        "task": "Implement the FizzBuzz task in the workspace and verify it with tests.",
+    },
+    "text_tools": {
+        "path": "text_tools_workspace_template",
+        "task": "Implement normalize_words(text) in text_tools.py and verify it with tests.",
+    },
+}
 
 
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    parser = argparse.ArgumentParser(description="Run a real DeepSeek V4 ForgeAgent demo.")
+    parser.add_argument("--template", choices=sorted(TASKS), default="fizzbuzz")
+    parser.add_argument("--task", help="Override the default task prompt.")
+    args = parser.parse_args()
     project_root = Path(__file__).resolve().parents[1]
-    source = project_root / "examples" / "demo_workspace_template"
-    workspace = project_root / "demo_workspace" / "deepseek_cli"
+    spec = TASKS[args.template]
+    source = project_root / "examples" / spec["path"]
+    workspace = project_root / "demo_workspace" / f"deepseek_cli_{args.template}"
     if workspace.exists():
         shutil.rmtree(workspace)
     workspace.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +53,7 @@ def main() -> int:
     print(f"WORKSPACE: {workspace}")
 
     agent = Agent(model, workspace, max_steps=10, approve_commands=lambda command: True)
-    result = agent.run(TASK, on_event=_print_event)
+    result = agent.run(args.task or spec["task"], on_event=_print_event)
     print(f"\nRESULT: {result.status}; steps={result.steps}\n{result.answer}")
     memory_file = workspace / ".agent" / "PROJECT_MEMORY.md"
     if memory_file.exists():

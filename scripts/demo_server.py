@@ -17,13 +17,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from coding_agent.agent import Agent
 from coding_agent.config import Settings
 from coding_agent.llm import OpenAICompatibleModel
-from examples.demo_model import DemoModel
+from examples.demo_model import DemoModel, TextToolsDemoModel
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "web_demo"
 DEMO_WORKSPACE_ROOT = ROOT / "demo_workspace" / "web_runs"
-DEMO_TEMPLATE = ROOT / "examples" / "demo_workspace_template"
+DEMO_TEMPLATES = {
+    "fizzbuzz": {
+        "path": ROOT / "examples" / "demo_workspace_template",
+        "task": "Implement the FizzBuzz task in the workspace and verify it with tests.",
+        "source": "fizzbuzz.py",
+        "test": "test_fizzbuzz.py",
+        "offline_model": DemoModel,
+    },
+    "text_tools": {
+        "path": ROOT / "examples" / "text_tools_workspace_template",
+        "task": "Implement normalize_words(text) in text_tools.py and verify it with tests.",
+        "source": "text_tools.py",
+        "test": "test_text_tools.py",
+        "offline_model": TextToolsDemoModel,
+    },
+}
 
 
 class DemoHandler(BaseHTTPRequestHandler):
@@ -58,10 +73,12 @@ class DemoHandler(BaseHTTPRequestHandler):
             task = payload.get("task") if isinstance(payload, dict) else None
             mode = payload.get("mode") if isinstance(payload, dict) else None
             provider = payload.get("provider") if isinstance(payload, dict) else None
+            template = payload.get("template") if isinstance(payload, dict) else None
             data = run_demo(
                 task if isinstance(task, str) and task.strip() else None,
                 mode=mode if isinstance(mode, str) else "offline",
                 provider=provider if isinstance(provider, dict) else {},
+                template=template if isinstance(template, str) else "fizzbuzz",
             )
             self._send_json(data)
         except Exception as exc:
@@ -90,28 +107,32 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict | None = None) -> dict:
+def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict | None = None, template: str = "fizzbuzz") -> dict:
     started = perf_counter()
+    spec = DEMO_TEMPLATES.get(template, DEMO_TEMPLATES["fizzbuzz"])
     DEMO_WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
     run_id = uuid.uuid4().hex[:12]
     workspace = DEMO_WORKSPACE_ROOT / run_id
-    shutil.copytree(DEMO_TEMPLATE, workspace, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
-    before_fizzbuzz = _read_text(workspace / "fizzbuzz.py")
+    shutil.copytree(spec["path"], workspace, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    source_name = str(spec["source"])
+    test_name = str(spec["test"])
+    before_source = _read_text(workspace / source_name)
     events: list[dict] = []
 
     def on_event(kind: str, step: int, text: str) -> None:
         events.append({"kind": kind, "step": step, "text": text})
 
-    model = _make_model(mode, provider or {})
+    model = _make_model(mode, provider or {}, spec)
     agent = Agent(model, workspace, max_steps=8, approve_commands=lambda command: True)
-    result = agent.run(task or "Implement the FizzBuzz task in the workspace and verify it with tests.", on_event=on_event)
+    result = agent.run(task or str(spec["task"]), on_event=on_event)
     test_output = _last_tool_output(result.transcript, "run_command")
     memory_path = workspace / ".agent" / "PROJECT_MEMORY.md"
-    after_fizzbuzz = _read_text(workspace / "fizzbuzz.py")
+    after_source = _read_text(workspace / source_name)
     return {
         "status": result.status,
         "answer": result.answer,
         "run_id": run_id,
+        "template": template if template in DEMO_TEMPLATES else "fizzbuzz",
         "mode": mode if mode == "deepseek" else "offline",
         "model": getattr(model, "settings", None).model if hasattr(model, "settings") else "DemoModel",
         "workspace": str(workspace),
@@ -120,11 +141,13 @@ def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict |
         "transcript": result.transcript,
         "tool_calls": _tool_calls(result.transcript),
         "events": events,
+        "primary_file": source_name,
+        "test_file": test_name,
         "files": {
-            "fizzbuzz": after_fizzbuzz,
-            "test_fizzbuzz": _read_text(workspace / "test_fizzbuzz.py"),
+            "source": after_source,
+            "test": _read_text(workspace / test_name),
         },
-        "file_diff": _unified_diff(before_fizzbuzz, after_fizzbuzz, "before/fizzbuzz.py", "after/fizzbuzz.py"),
+        "file_diff": _unified_diff(before_source, after_source, f"before/{source_name}", f"after/{source_name}"),
         "test_output": test_output,
         "tests_passed": "passed" in test_output and "exit_code=0" in test_output,
         "memory": _read_text(memory_path),
@@ -133,9 +156,9 @@ def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict |
     }
 
 
-def _make_model(mode: str, provider: dict):
+def _make_model(mode: str, provider: dict, spec: dict):
     if mode != "deepseek":
-        return DemoModel()
+        return spec["offline_model"]()
     api_key = str(provider.get("api_key") or os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY") or "")
     if not api_key:
         raise ValueError("DeepSeek API key 未配置：请在密码框输入，或在启动服务前设置 DEEPSEEK_API_KEY。")

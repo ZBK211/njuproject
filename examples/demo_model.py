@@ -22,3 +22,24 @@ class DemoModel:
         else:
             text = '{"kind":"final","answer":"Implemented fizzbuzz(n) and verified it with pytest."}'
         return ModelResponse(text=text, raw={"demo_call": self.calls})
+
+
+class TextToolsDemoModel:
+    """Deterministic offline model for the text tools demo workspace."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def complete(self, messages):
+        self.calls += 1
+        if self.calls == 1:
+            text = '{"kind":"tool","tool":"list_dir","arguments":{"path":"."}}'
+        elif self.calls == 2:
+            text = '{"kind":"tool","tool":"read_file","arguments":{"path":"text_tools.py"}}'
+        elif self.calls == 3:
+            text = '{"kind":"tool","tool":"write_file","arguments":{"path":"text_tools.py","content":"import re\\n\\n\\ndef normalize_words(text):\\n    words = re.findall(r\\\"[A-Za-z0-9]+\\\", text.lower())\\n    return sorted(set(words))\\n"}}'
+        elif self.calls == 4:
+            text = '{"kind":"tool","tool":"run_command","arguments":{"command":"python -m pytest test_text_tools.py -q"}}'
+        else:
+            text = '{"kind":"final","answer":"Implemented normalize_words(text) and verified it with pytest."}'
+        return ModelResponse(text=text, raw={"demo_call": self.calls})

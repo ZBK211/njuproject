@@ -6,9 +6,11 @@ const flowEl = document.getElementById("flow");
 const transcriptEl = document.getElementById("transcript");
 const answerView = document.getElementById("answerView");
 const codeView = document.getElementById("codeView");
+const codeFileLabel = document.getElementById("codeFileLabel");
 const testView = document.getElementById("testView");
 const diffView = document.getElementById("diffView");
 const testFileView = document.getElementById("testFileView");
+const testFileLabel = document.getElementById("testFileLabel");
 const memoryView = document.getElementById("memoryView");
 const auditGrid = document.getElementById("auditGrid");
 const toolCallsEl = document.getElementById("toolCalls");
@@ -22,6 +24,12 @@ const providerBox = document.getElementById("providerBox");
 const baseUrlEl = document.getElementById("baseUrl");
 const modelNameEl = document.getElementById("modelName");
 const apiKeyEl = document.getElementById("apiKey");
+const templateSelect = document.getElementById("templateSelect");
+
+const taskTemplates = {
+  fizzbuzz: "Implement the FizzBuzz task in the workspace and verify it with tests.",
+  text_tools: "Implement normalize_words(text) in text_tools.py and verify it with tests.",
+};
 
 const flow = [
   ["Task", "用户任务进入 Agent.run"],
@@ -142,6 +150,7 @@ async function runOnce(batchIndex = null, propagateError = false) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         task: taskEl.value,
+        template: templateSelect.value,
         mode: selectedMode(),
         provider: {
           base_url: baseUrlEl.value,
@@ -157,10 +166,12 @@ async function runOnce(batchIndex = null, propagateError = false) {
     renderToolCalls(data.tool_calls || []);
     workspacePath.textContent = `workspace: ${data.workspace || "unknown"}`;
     answerView.textContent = data.answer || "(no final answer)";
-    codeView.textContent = data.files.fizzbuzz || "(missing)";
+    codeFileLabel.textContent = data.primary_file || "source file";
+    testFileLabel.textContent = data.test_file || "test file";
+    codeView.textContent = data.files.source || "(missing)";
     diffView.textContent = data.file_diff || "(no diff)";
     testView.textContent = data.test_output || "(no test output)";
-    testFileView.textContent = data.files.test_fizzbuzz || "(missing)";
+    testFileView.textContent = data.files.test || "(missing)";
     memoryView.textContent = data.memory || "(no memory generated)";
     stepsMetric.textContent = String(data.steps);
     testsMetric.textContent = data.tests_passed ? "pass" : "check";
@@ -225,6 +236,9 @@ document.querySelectorAll('input[name="mode"]').forEach((input) => {
   input.addEventListener("change", () => {
     providerBox.hidden = selectedMode() !== "deepseek";
   });
+});
+templateSelect.addEventListener("change", () => {
+  taskEl.value = taskTemplates[templateSelect.value] || taskTemplates.fizzbuzz;
 });
 runBtn.addEventListener("click", runDemo);
 runBatchBtn.addEventListener("click", runBatch);

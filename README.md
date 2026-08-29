@@ -41,10 +41,9 @@ examples/              disposable demo workspace and deterministic test model
 scripts/               CLI demos, web demo server, assignment audit, packaging
 tests/                 pytest suite for parser, tools, model client, memory, loop
 web_demo/              browser demo for DeepSeek V4 and local tool inspection
-docs/                  compliance notes, interview guide, recording steps
 ```
 
-Start with [docs/project_guide.md](docs/project_guide.md) when preparing for the interview. It maps every important file to the design point it supports.
+Read the code in this order when reviewing the implementation: `coding_agent/agent.py`, `coding_agent/parser.py`, `coding_agent/tools/registry.py`, `coding_agent/tools/filesystem.py`, `coding_agent/tools/shell.py`, `coding_agent/llm.py`, then `coding_agent/memory.py`.
 
 ## Demo Output
 
@@ -69,6 +68,8 @@ For recording and visual inspection, run `python scripts/demo_server.py` and ope
 ![Web demo showing DeepSeek V4 local tool calls](web_demo/assets/demo-deepseek-v4.png)
 
 The demo page can be run more than once. Each browser run receives an isolated workspace under `demo_workspace/web_runs/`, so command-line and browser demonstrations do not overwrite each other.
+
+The demo is not limited to FizzBuzz. Use `python scripts/run_deepseek_demo.py --template text_tools` or choose “文本归一化工具” on the web page to run a second task where the agent implements `normalize_words(text)` from tests. To try DeepSeek V4 Pro, set `DEEPSEEK_MODEL=deepseek-v4-pro` or edit the model field on the web page.
 
 ## Assignment Audit
 

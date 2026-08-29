@@ -44,6 +44,13 @@
           <span id="status" class="status idle">等待运行</span>
         </div>
         <textarea id="task">Implement the FizzBuzz task in the workspace and verify it with tests.</textarea>
+        <div class="template-box">
+          <label for="templateSelect">任务模板</label>
+          <select id="templateSelect">
+            <option value="fizzbuzz">FizzBuzz 列表函数</option>
+            <option value="text_tools">文本归一化工具</option>
+          </select>
+        </div>
         <div class="mode-box">
           <label><input type="radio" name="mode" value="offline" checked> 本地工具链路演示</label>
           <label><input type="radio" name="mode" value="deepseek"> DeepSeek 实时模型</label>
@@ -98,7 +105,7 @@
 
     <section class="grid">
       <div class="panel">
-        <div class="panel-head"><span>最终代码</span><span>fizzbuzz.py</span></div>
+        <div class="panel-head"><span>最终代码</span><span id="codeFileLabel">fizzbuzz.py</span></div>
         <pre id="codeView">尚未运行</pre>
       </div>
       <div class="panel">
@@ -113,7 +120,7 @@
         <pre id="testView">尚未运行</pre>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>测试文件</span><span>test_fizzbuzz.py</span></div>
+        <div class="panel-head"><span>测试文件</span><span id="testFileLabel">test_fizzbuzz.py</span></div>
         <pre id="testFileView">尚未运行</pre>
       </div>
     </section>
