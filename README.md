@@ -63,7 +63,7 @@ PROJECT MEMORY
 - Agent run completed - Completed run using tools: list_dir, read_file, edit_file, run_command.
 ```
 
-For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and displays the workspace path, local tool calls, JSON arguments, generated code, real diff, pytest output, project memory, and assignment compliance checks. Use “DeepSeek 实时模型” for the strongest assessment demo, and keep the offline mode for deterministic regression checks.
+For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and puts the most important evidence on screen: local tool calls, JSON arguments, generated code, real diff, pytest output, workspace path, run history, and project memory. Use “DeepSeek 实时模型” for the strongest assessment demo, and keep the offline mode for deterministic regression checks.
 
 ![Web demo showing DeepSeek V4 local tool calls](web_demo/assets/demo-deepseek-v4.png)
 

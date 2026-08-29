@@ -25,7 +25,19 @@ def _read_file(context: ToolContext, args: dict[str, Any]) -> str:
     if not path.is_file():
         raise ToolError(f"file not found: {args.get('path')}")
     max_chars = min(int(args.get("max_chars", 30000)), 100000)
-    return path.read_text(encoding="utf-8")[:max_chars]
+    show_line_numbers = bool(args.get("show_line_numbers", True))
+    start_line = max(1, int(args.get("start_line", 1)))
+    max_lines = max(1, min(int(args.get("max_lines", 400)), 2000))
+    lines = path.read_text(encoding="utf-8").splitlines()
+    selected = lines[start_line - 1 : start_line - 1 + max_lines]
+    if show_line_numbers:
+        body = "\n".join(f"{index}|{line}" for index, line in enumerate(selected, start_line))
+    else:
+        body = "\n".join(selected)
+    if start_line > 1 or len(lines) > len(selected):
+        header = f"[FILE] {path.relative_to(context.root.resolve()).as_posix()} lines={len(lines)} showing={start_line}-{start_line + len(selected) - 1}\n"
+        body = header + body
+    return body[:max_chars]
 
 
 def _write_file(context: ToolContext, args: dict[str, Any]) -> str:
@@ -47,7 +59,7 @@ def _edit_file(context: ToolContext, args: dict[str, Any]) -> str:
     content = path.read_text(encoding="utf-8")
     occurrences = content.count(old)
     if occurrences == 0:
-        raise ToolError("old text was not found")
+        raise ToolError("old text was not found; read the file again and retry with an exact, smaller unique block")
     expected = int(args.get("expected_occurrences", 1))
     if occurrences != expected:
         raise ToolError(f"expected {expected} occurrence(s), found {occurrences}")
@@ -117,6 +129,9 @@ def register_filesystem_tools(registry: ToolRegistry) -> None:
             "properties": {
                 "path": {"type": "string", "description": "Relative file path."},
                 "max_chars": {"type": "integer", "description": "Maximum characters to return."},
+                "start_line": {"type": "integer", "description": "First 1-based line to read, default 1."},
+                "max_lines": {"type": "integer", "description": "Maximum lines to read, default 400."},
+                "show_line_numbers": {"type": "boolean", "description": "Prefix lines with line numbers, default true."},
             },
             "required": ["path"],
         },

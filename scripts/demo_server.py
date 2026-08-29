@@ -173,29 +173,32 @@ def _tool_calls(transcript: list[dict]) -> list[dict]:
         if item.get("type") != "tool":
             continue
         text = str(item.get("text", ""))
+        arguments = item.get("arguments", {})
         calls.append(
             {
                 "step": item.get("step"),
                 "tool": item.get("tool"),
-                "arguments": item.get("arguments", {}),
-                "summary": _summarize_tool(str(item.get("tool", "")), text),
+                "arguments": arguments,
+                "summary": _summarize_tool(str(item.get("tool", "")), text, arguments if isinstance(arguments, dict) else {}),
                 "output": text,
             }
         )
     return calls
 
 
-def _summarize_tool(tool: str, output: str) -> str:
+def _summarize_tool(tool: str, output: str, arguments: dict) -> str:
+    path = arguments.get("path")
+    command = arguments.get("command")
     if tool == "list_dir":
-        return "列出工作区文件，确认有 fizzbuzz.py 和测试文件。"
+        return f"列出 {path or '工作区'}，让模型先确认可操作文件。"
     if tool == "read_file":
-        return "读取源码，看到函数仍是 NotImplementedError。"
+        return f"读取 {path or '文件'}，把源码或测试内容放回模型上下文。"
     if tool == "write_file":
-        return "把模型生成的实现写回本地文件。"
+        return f"把模型生成的完整内容写入 {path or '文件'}。"
     if tool == "edit_file":
-        return "按精确匹配修改本地文件，避免误改其它内容。"
+        return f"按精确匹配修改 {path or '文件'}，避免误改其它内容。"
     if tool == "run_command":
-        return "在本地工作区运行 pytest，检查任务是否真的通过。"
+        return f"在本地工作区执行 {command or '命令'}，用真实结果约束下一步。"
     if tool == "memory_record":
         return "写入项目记忆，供后续会话召回。"
     if tool == "memory_read":

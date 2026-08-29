@@ -17,7 +17,8 @@ def make_registry(tmp_path: Path) -> ToolRegistry:
 def test_filesystem_tools_are_workspace_scoped(tmp_path):
     registry = make_registry(tmp_path)
     assert registry.execute("write_file", {"path": "src/a.txt", "content": "hello"}).startswith("OK:")
-    assert registry.execute("read_file", {"path": "src/a.txt"}) == "hello"
+    assert registry.execute("read_file", {"path": "src/a.txt"}) == "1|hello"
+    assert registry.execute("read_file", {"path": "src/a.txt", "show_line_numbers": False}) == "hello"
     assert "src/a.txt" in registry.execute("search", {"query": "hello"})
     assert "escapes" in registry.execute("read_file", {"path": "../outside.txt"})
 

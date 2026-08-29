@@ -16,20 +16,28 @@
       </div>
     </div>
     <nav>
-      <a class="active" href="#run">运行演示</a>
-      <a href="#architecture">核心链路</a>
-      <a href="#memory">项目记忆</a>
-      <a href="#audit">合规检查</a>
+      <a class="active" href="#run">演示面板</a>
+      <a href="#tools">工具轨迹</a>
+      <a href="#evidence">验证证据</a>
     </nav>
-    <div class="note">本页面调用本机后端。默认模式会稳定复现本地工具链路；DeepSeek 模式用于验证真实模型，但会受外部接口延迟影响。</div>
+    <div class="note">
+      <strong>展示顺序</strong>
+      <span>选任务和模型，运行一次；先讲工具调用，再讲 diff 和 pytest；最后切换任务模板说明它不是固定脚本。</span>
+    </div>
   </aside>
 
   <main>
     <section class="topbar">
       <div>
-        <p class="eyebrow">Local Demo</p>
-        <h1>DeepSeek V4 驱动的本地 Coding Agent</h1>
+        <p class="eyebrow">DeepSeek V4 + Local Tools</p>
+        <h1>本地工具可见的 Coding Agent 演示台</h1>
         <p class="run-path" id="workspacePath">workspace: 等待运行</p>
+        <div class="quick-guide">
+          <span><b>1</b> 选择任务</span>
+          <span><b>2</b> 选择 DeepSeek 模型</span>
+          <span><b>3</b> 观察本地工具调用</span>
+          <span><b>4</b> 用 diff 和 pytest 收尾</span>
+        </div>
       </div>
       <div class="actions">
         <button id="runBtn" type="button">运行一次</button>
@@ -40,7 +48,7 @@
     <section id="run" class="workspace">
       <div class="panel task-panel">
         <div class="panel-head">
-          <span>任务</span>
+          <span>输入任务</span>
           <span id="status" class="status idle">等待运行</span>
         </div>
         <textarea id="task">Implement the FizzBuzz task in the workspace and verify it with tests.</textarea>
@@ -52,7 +60,7 @@
           </select>
         </div>
         <div class="mode-box">
-          <label><input type="radio" name="mode" value="offline" checked> 本地工具链路演示</label>
+          <label><input type="radio" name="mode" value="offline" checked> 离线回归演示</label>
           <label><input type="radio" name="mode" value="deepseek"> DeepSeek 实时模型</label>
         </div>
         <div class="provider-box" id="providerBox" hidden>
@@ -64,27 +72,34 @@
           </datalist>
           <input id="apiKey" type="password" placeholder="API Key 可留空，优先读取环境变量" aria-label="DeepSeek API Key">
         </div>
-        <div class="metrics">
-          <div><span id="stepsMetric">0</span><small>steps</small></div>
-          <div><span id="testsMetric">-</span><small>tests</small></div>
-          <div><span id="memoryMetric">-</span><small>memory</small></div>
+        <div class="run-guide">
+          <div><strong>课堂展示</strong><span>运行 DeepSeek 后，重点解释模型如何选择 read_file、edit_file、run_command。</span></div>
+          <div><strong>稳定性展示</strong><span>点击连续运行 3 次，确认不同 run id 下都能完成同一链路。</span></div>
         </div>
-        <div class="result-line" id="resultLine">尚未运行。输入编程任务后，Agent 会在临时 workspace 中读写文件并运行验证命令。</div>
+        <div class="metrics">
+          <div><span id="stepsMetric">0</span><small>执行步数</small></div>
+          <div><span id="testsMetric">-</span><small>测试结果</small></div>
+          <div><span id="memoryMetric">-</span><small>记忆写入</small></div>
+        </div>
+        <div class="result-line" id="resultLine">等待运行：先选任务和模型，然后点击运行。</div>
       </div>
 
-      <div class="panel flow-panel" id="architecture">
+      <div class="panel tool-panel featured" id="tools">
         <div class="panel-head">
-          <span>核心链路</span>
-          <span>JSON action loop</span>
+          <span>本地工具调用</span>
+          <span id="toolRunLabel">等待运行</span>
         </div>
-        <div class="flow" id="flow"></div>
+        <div class="tool-calls" id="toolCalls">尚未运行。运行后这里会逐步展示工具名、参数和本地返回结果。</div>
       </div>
     </section>
 
     <section class="grid">
-      <div class="panel tool-panel">
-        <div class="panel-head"><span>本地工具调用</span><span>local tools</span></div>
-        <div class="tool-calls" id="toolCalls">尚未运行</div>
+      <div class="panel flow-panel">
+        <div class="panel-head">
+          <span>执行进度</span>
+          <span>action loop</span>
+        </div>
+        <div class="flow" id="flow"></div>
       </div>
       <div class="panel">
         <div class="panel-head"><span>运行历史</span><span>multi-run</span></div>
@@ -92,7 +107,7 @@
       </div>
     </section>
 
-    <section class="grid">
+    <section class="grid" id="evidence">
       <div class="panel">
         <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
         <div class="log" id="transcript">点击“运行一次”后显示每一轮模型动作和本地工具观察。</div>
@@ -131,18 +146,13 @@
         <pre id="memoryView">尚未运行</pre>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>运行说明</span><span>what is real</span></div>
-        <div class="explain">
-          <p>这个 demo 的后端会重置一个临时 workspace，然后把任务交给 ForgeAgent。</p>
-          <p>默认模式使用确定性的 DemoModel，目的是稳定展示 Agent 如何调用本地工具；DeepSeek 模式会把同一套工具协议交给真实模型。</p>
-          <p>页面里的工具输出、文件内容、代码 diff、pytest 输出、项目记忆都来自本机真实执行结果，不是预先写死的截图。</p>
+        <div class="panel-head"><span>本次运行摘要</span><span>dynamic evidence</span></div>
+        <div class="evidence-list">
+          <p id="evidenceRun">运行后这里显示本次 run id 和 workspace。</p>
+          <p id="evidenceTools">工具轨迹会按模型真实动作更新。</p>
+          <p id="evidenceTests">测试结果会显示 pytest 是否通过。</p>
         </div>
       </div>
-    </section>
-
-    <section id="audit" class="panel audit-panel">
-      <div class="panel-head"><span>题目合规检查</span><span>assignment audit</span></div>
-      <div class="audit-grid" id="auditGrid"></div>
     </section>
   </main>
 

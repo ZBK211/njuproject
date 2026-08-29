@@ -12,11 +12,14 @@ const diffView = document.getElementById("diffView");
 const testFileView = document.getElementById("testFileView");
 const testFileLabel = document.getElementById("testFileLabel");
 const memoryView = document.getElementById("memoryView");
-const auditGrid = document.getElementById("auditGrid");
 const toolCallsEl = document.getElementById("toolCalls");
+const toolRunLabel = document.getElementById("toolRunLabel");
 const workspacePath = document.getElementById("workspacePath");
 const historyView = document.getElementById("historyView");
 const resultLine = document.getElementById("resultLine");
+const evidenceRun = document.getElementById("evidenceRun");
+const evidenceTools = document.getElementById("evidenceTools");
+const evidenceTests = document.getElementById("evidenceTests");
 const stepsMetric = document.getElementById("stepsMetric");
 const testsMetric = document.getElementById("testsMetric");
 const memoryMetric = document.getElementById("memoryMetric");
@@ -68,15 +71,6 @@ function renderTranscript(items) {
   }).join("\n\n");
 }
 
-function renderAudit(items) {
-  auditGrid.innerHTML = items.map((item) => `
-    <div class="audit-item ${item.level}">
-      <strong>${item.title}</strong>
-      <p>${item.detail}</p>
-    </div>
-  `).join("");
-}
-
 function selectedMode() {
   return document.querySelector('input[name="mode"]:checked')?.value || "offline";
 }
@@ -84,8 +78,10 @@ function selectedMode() {
 function renderToolCalls(items) {
   if (!items.length) {
     toolCallsEl.textContent = "没有工具调用。";
+    toolRunLabel.textContent = "0 calls";
     return;
   }
+  toolRunLabel.textContent = `${items.length} calls`;
   toolCallsEl.innerHTML = items.map((item) => `
     <article class="tool-call">
       <div class="tool-top">
@@ -94,7 +90,7 @@ function renderToolCalls(items) {
       </div>
       <p>${item.summary}</p>
       <div class="tool-args">
-        <span>arguments</span>
+        <span>输入参数</span>
         <code>${escapeHtml(JSON.stringify(item.arguments || {}, null, 2))}</code>
       </div>
       <pre>${escapeHtml(item.output)}</pre>
@@ -115,7 +111,15 @@ async function loadConfig() {
     const data = await response.json();
     baseUrlEl.value = data.deepseek_base_url || "https://api.deepseek.com";
     modelNameEl.value = data.deepseek_model || "deepseek-v4-flash";
-    if (data.deepseek_configured) apiKeyEl.placeholder = "已检测到环境变量，可留空";
+    if (data.deepseek_configured) {
+      apiKeyEl.placeholder = "已检测到环境变量，可留空";
+      const deepseekRadio = document.querySelector('input[name="mode"][value="deepseek"]');
+      if (deepseekRadio) {
+        deepseekRadio.checked = true;
+        providerBox.hidden = false;
+      }
+      resultLine.textContent = "已检测到 DeepSeek 配置：可以直接点击运行一次。";
+    }
   } catch {
     // The demo can still run offline.
   }
@@ -139,8 +143,12 @@ async function runOnce(batchIndex = null, propagateError = false) {
   testFileView.textContent = "等待读取";
   memoryView.textContent = "等待写入";
   toolCallsEl.textContent = "等待本地工具调用";
+  toolRunLabel.textContent = "running";
   workspacePath.textContent = "workspace: 后端正在创建演示工作区";
-  resultLine.textContent = "模型正在给出 action，本地工具会逐步执行。";
+  resultLine.textContent = "运行中：等待模型返回 JSON action。";
+  evidenceRun.textContent = "正在创建独立 workspace。";
+  evidenceTools.textContent = "工具轨迹尚未返回。";
+  evidenceTests.textContent = "pytest 尚未执行。";
   stepsMetric.textContent = "0";
   testsMetric.textContent = "-";
   memoryMetric.textContent = "-";
@@ -176,15 +184,21 @@ async function runOnce(batchIndex = null, propagateError = false) {
     stepsMetric.textContent = String(data.steps);
     testsMetric.textContent = data.tests_passed ? "pass" : "check";
     memoryMetric.textContent = data.memory_recorded ? "yes" : "no";
-    renderAudit(data.audit);
     addHistory(data);
-    resultLine.textContent = `run ${data.run_id || "-"} · ${data.model || "-"} · ${data.duration_ms || 0} ms · ${data.tests_passed ? "tests passed" : "tests need check"}`;
+    const tools = (data.tool_calls || []).map((item) => item.tool).join(" -> ");
+    resultLine.textContent = `完成：run ${data.run_id || "-"} / ${data.model || "-"} / ${data.duration_ms || 0} ms / ${data.tests_passed ? "tests passed" : "tests need check"}`;
+    evidenceRun.textContent = `本次 run id 是 ${data.run_id || "-"}，workspace 是 ${data.workspace || "unknown"}。`;
+    evidenceTools.textContent = `工具轨迹：${tools || "无"}`;
+    evidenceTests.textContent = data.tests_passed
+      ? "pytest 已通过，说明文件修改后被真实测试验证。"
+      : "pytest 未通过或输出异常，需要查看测试输出。";
     setStatus("done", "运行完成");
     return data;
   } catch (error) {
     renderFlow(0, 0);
     transcriptEl.textContent = error.message;
     resultLine.textContent = error.message;
+    toolRunLabel.textContent = "failed";
     setStatus("error", "运行失败");
     if (propagateError) throw error;
     return null;
@@ -230,7 +244,6 @@ async function runBatch() {
 }
 
 renderFlow();
-renderAudit([]);
 loadConfig();
 document.querySelectorAll('input[name="mode"]').forEach((input) => {
   input.addEventListener("change", () => {
