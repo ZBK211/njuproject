@@ -12,6 +12,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python -m pytest -q
 python scripts/run_demo.py
+python scripts/run_deepseek_demo.py
 python scripts/demo_server.py
 ```
 
@@ -24,7 +25,7 @@ python -m coding_agent "Add tests and improve the error handling" --root .
 
 The runtime reads `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_TIMEOUT`. Secrets are never read from a tracked file. The CLI asks before running shell commands; pass `--yes` only in a trusted disposable workspace. Destructive commands such as recursive forced deletion, `git reset --hard`, and disk shutdown/format commands are blocked before approval.
 
-The web demo also supports a DeepSeek real-model mode. It accepts the key from the password field at runtime or from `DEEPSEEK_API_KEY`; the value is not written to the repository, screenshot assets, or generated submission files.
+For the DeepSeek V4 path, set `DEEPSEEK_API_KEY` and run `python scripts/run_deepseek_demo.py`. The default model is `deepseek-v4-flash`; the web demo accepts the key from the password field at runtime or from `DEEPSEEK_API_KEY`. The value is not written to the repository, screenshot assets, or generated submission files.
 
 ## Architecture
 
@@ -32,26 +33,52 @@ The web demo also supports a DeepSeek real-model mode. It accepts the key from t
 
 The project also includes a local memory layer inspired by the design of `dsh-memoir`: completed tool-using runs are distilled into `.agent/memory.json`, rendered to `.agent/PROJECT_MEMORY.md`, retrieved with lexical BM25 over Chinese text, English words, and code identifiers, and injected into future runs as bounded Hot Memory. The memory feature is implemented in Python in this repository and does not require the DSH plugin runtime.
 
-## Demo Output
-
-`python scripts/run_demo.py` resets a small FizzBuzz workspace, lets the agent inspect and edit the file, runs pytest, then prints the generated project memory. A successful run shows:
+## Repository Layout
 
 ```text
-[TOOL 4] run_command: exit_code=0
-.. [100%]
-2 passed
+coding_agent/          agent loop, model adapter, parser, tools, memory
+examples/              disposable demo workspace and deterministic test model
+scripts/               CLI demos, web demo server, assignment audit, packaging
+tests/                 pytest suite for parser, tools, model client, memory, loop
+web_demo/              browser demo for DeepSeek V4 and local tool inspection
+docs/                  compliance notes, interview guide, recording steps
+```
 
-RESULT: completed; steps=5
-Implemented fizzbuzz(n) and verified it with pytest.
+Start with [docs/project_guide.md](docs/project_guide.md) when preparing for the interview. It maps every important file to the design point it supports.
+
+## Demo Output
+
+`python scripts/run_deepseek_demo.py` resets a small FizzBuzz workspace, lets DeepSeek V4 inspect and edit the file through ForgeAgent tools, runs pytest locally, then prints the generated project memory. A successful run shows:
+
+```text
+[MODEL 1] {"kind":"tool","tool":"list_dir","arguments":{"path":"."}}
+[TOOL 5] run_command: exit_code=0
+..                                                                       [100%]
+2 passed in 0.01s
+
+RESULT: completed; steps=6
+Implemented `fizzbuzz(n)` ... Verified by running `python -m pytest test_fizzbuzz.py -q`.
 
 PROJECT MEMORY
 ## Work Log
-- Agent run completed - Completed run using tools: list_dir, read_file, write_file, run_command.
+- Agent run completed - Completed run using tools: list_dir, read_file, edit_file, run_command.
 ```
 
-For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and displays the workspace path, local tool calls, JSON arguments, generated code, real diff, pytest output, project memory, and assignment compliance checks.
+For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and displays the workspace path, local tool calls, JSON arguments, generated code, real diff, pytest output, project memory, and assignment compliance checks. Use “DeepSeek 实时模型” for the strongest assessment demo, and keep the offline mode for deterministic regression checks.
 
-![Web demo showing local tool calls](web_demo/assets/demo-local-tools.png)
+![Web demo showing DeepSeek V4 local tool calls](web_demo/assets/demo-deepseek-v4.png)
+
+The demo page can be run more than once. Each browser run receives an isolated workspace under `demo_workspace/web_runs/`, so command-line and browser demonstrations do not overwrite each other.
+
+## Assignment Audit
+
+Run:
+
+```powershell
+python scripts/audit_assignment.py
+```
+
+The audit checks `README.txt` length and repository URL, forbidden agent framework imports/dependencies, obvious committed API keys, DeepSeek V4 defaults, required core files, and the pytest suite.
 
 ## Development
 

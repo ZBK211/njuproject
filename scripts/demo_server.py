@@ -6,6 +6,8 @@ import shutil
 import sys
 import argparse
 import difflib
+import uuid
+from time import perf_counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -20,7 +22,7 @@ from examples.demo_model import DemoModel
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "web_demo"
-DEMO_WORKSPACE = ROOT / "demo_workspace"
+DEMO_WORKSPACE_ROOT = ROOT / "demo_workspace" / "web_runs"
 DEMO_TEMPLATE = ROOT / "examples" / "demo_workspace_template"
 
 
@@ -35,7 +37,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                 {
                     "deepseek_configured": bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")),
                     "deepseek_base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-                    "deepseek_model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+                    "deepseek_model": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
                 }
             )
             return
@@ -89,34 +91,38 @@ class DemoHandler(BaseHTTPRequestHandler):
 
 
 def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict | None = None) -> dict:
-    if DEMO_WORKSPACE.exists():
-        shutil.rmtree(DEMO_WORKSPACE)
-    shutil.copytree(DEMO_TEMPLATE, DEMO_WORKSPACE)
-    before_fizzbuzz = _read_text(DEMO_WORKSPACE / "fizzbuzz.py")
+    started = perf_counter()
+    DEMO_WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+    run_id = uuid.uuid4().hex[:12]
+    workspace = DEMO_WORKSPACE_ROOT / run_id
+    shutil.copytree(DEMO_TEMPLATE, workspace, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    before_fizzbuzz = _read_text(workspace / "fizzbuzz.py")
     events: list[dict] = []
 
     def on_event(kind: str, step: int, text: str) -> None:
         events.append({"kind": kind, "step": step, "text": text})
 
     model = _make_model(mode, provider or {})
-    agent = Agent(model, DEMO_WORKSPACE, max_steps=8, approve_commands=lambda command: True)
+    agent = Agent(model, workspace, max_steps=8, approve_commands=lambda command: True)
     result = agent.run(task or "Implement the FizzBuzz task in the workspace and verify it with tests.", on_event=on_event)
     test_output = _last_tool_output(result.transcript, "run_command")
-    memory_path = DEMO_WORKSPACE / ".agent" / "PROJECT_MEMORY.md"
-    after_fizzbuzz = _read_text(DEMO_WORKSPACE / "fizzbuzz.py")
+    memory_path = workspace / ".agent" / "PROJECT_MEMORY.md"
+    after_fizzbuzz = _read_text(workspace / "fizzbuzz.py")
     return {
         "status": result.status,
         "answer": result.answer,
+        "run_id": run_id,
         "mode": mode if mode == "deepseek" else "offline",
         "model": getattr(model, "settings", None).model if hasattr(model, "settings") else "DemoModel",
-        "workspace": str(DEMO_WORKSPACE),
+        "workspace": str(workspace),
+        "duration_ms": round((perf_counter() - started) * 1000),
         "steps": result.steps,
         "transcript": result.transcript,
         "tool_calls": _tool_calls(result.transcript),
         "events": events,
         "files": {
             "fizzbuzz": after_fizzbuzz,
-            "test_fizzbuzz": _read_text(DEMO_WORKSPACE / "test_fizzbuzz.py"),
+            "test_fizzbuzz": _read_text(workspace / "test_fizzbuzz.py"),
         },
         "file_diff": _unified_diff(before_fizzbuzz, after_fizzbuzz, "before/fizzbuzz.py", "after/fizzbuzz.py"),
         "test_output": test_output,
@@ -134,7 +140,7 @@ def _make_model(mode: str, provider: dict):
     if not api_key:
         raise ValueError("DeepSeek API key 未配置：请在密码框输入，或在启动服务前设置 DEEPSEEK_API_KEY。")
     base_url = str(provider.get("base_url") or os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip("/")
-    model = str(provider.get("model") or os.getenv("DEEPSEEK_MODEL") or "deepseek-chat")
+    model = str(provider.get("model") or os.getenv("DEEPSEEK_MODEL") or "deepseek-v4-flash")
     return OpenAICompatibleModel(Settings(api_key=api_key, base_url=base_url, model=model, timeout_seconds=30))
 
 
@@ -163,6 +169,8 @@ def _summarize_tool(tool: str, output: str) -> str:
         return "读取源码，看到函数仍是 NotImplementedError。"
     if tool == "write_file":
         return "把模型生成的实现写回本地文件。"
+    if tool == "edit_file":
+        return "按精确匹配修改本地文件，避免误改其它内容。"
     if tool == "run_command":
         return "在本地工作区运行 pytest，检查任务是否真的通过。"
     if tool == "memory_record":

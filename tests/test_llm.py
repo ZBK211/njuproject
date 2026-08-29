@@ -57,3 +57,13 @@ def test_openai_compatible_model_rejects_missing_content(chat_server):
     model = OpenAICompatibleModel(Settings(api_key="test-key", base_url=url, model="test-model", timeout_seconds=3))
     with pytest.raises(LLMError, match="no choices"):
         model.complete([{"role": "user", "content": "hello"}])
+
+
+def test_deepseek_settings_default_to_v4(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.delenv("DEEPSEEK_BASE_URL", raising=False)
+    monkeypatch.delenv("DEEPSEEK_MODEL", raising=False)
+    settings = Settings.from_deepseek_env()
+    assert settings.api_key == "test-key"
+    assert settings.base_url == "https://api.deepseek.com"
+    assert settings.model == "deepseek-v4-flash"

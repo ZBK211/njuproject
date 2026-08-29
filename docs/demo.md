@@ -26,17 +26,46 @@ C:\Users\MR\Desktop\南软实训\tmp\dsh-memoir
 
 ## 当前全链路效果
 
-网页 demo 截图：
+DeepSeek V4 网页 demo 截图：
 
-![本地工具调用演示](web_demo/assets/demo-local-tools.png)
+![DeepSeek V4 本地工具调用演示](../web_demo/assets/demo-deepseek-v4.png)
 
-运行：
+真实模型运行：
+
+```powershell
+python scripts\run_deepseek_demo.py
+```
+
+实际链路：
+
+1. DeepSeek V4 输出 `list_dir`，查看工作区。
+2. 输出 `read_file`，读取待实现代码。
+3. 输出 `read_file`，读取测试约束。
+4. 输出 `edit_file`，精确替换 `fizzbuzz.py`。
+5. 输出 `run_command`，执行 `python -m pytest test_fizzbuzz.py -q`。
+6. 测试通过后输出 final。
+7. 自动生成项目记忆。
+
+实际输出关键部分：
+
+```text
+MODEL: deepseek-v4-flash
+[MODEL 1] {"kind":"tool","tool":"list_dir","arguments":{"path":"."}}
+[TOOL 5] run_command: exit_code=0
+..                                                                       [100%]
+2 passed in 0.01s
+
+RESULT: completed; steps=6
+Implemented `fizzbuzz(n)` ... Verified by running `python -m pytest test_fizzbuzz.py -q`.
+```
+
+离线回归运行：
 
 ```powershell
 python scripts\run_demo.py
 ```
 
-会看到 agent 完成以下链路：
+会看到固定 DemoModel 完成同一类链路，适合没有网络时回归：
 
 1. `list_dir` 查看工作区。
 2. `read_file` 读取待实现代码。
@@ -45,7 +74,7 @@ python scripts\run_demo.py
 5. 测试通过后返回 final。
 6. 自动生成项目记忆。
 
-实际输出关键部分：
+离线输出关键部分：
 
 ```text
 [TOOL 4] run_command: exit_code=0
@@ -74,7 +103,7 @@ python -m pytest -q
 当前结果：
 
 ```text
-19 passed
+21 passed
 ```
 
 测试覆盖：
@@ -100,8 +129,29 @@ python scripts\demo_server.py
 - 本次演示 workspace 的绝对路径。
 - `list_dir`、`read_file`、`write_file`、`run_command` 的工具调用顺序。
 - 每个工具调用的 JSON 参数和本地执行输出。
+- 连续运行历史，可用 3 次真实模型运行检查稳定性。
 - `fizzbuzz.py` 从 `NotImplementedError` 到完整实现的 unified diff。
 - `python -m pytest -q` 的真实输出。
 - 自动生成的 `.agent/PROJECT_MEMORY.md`。
 
-页面可在“离线稳定演示”和“DeepSeek 实时模型”之间切换。实时模式的 API Key 只在运行时输入或从环境变量读取，不进入仓库。
+页面可在“本地工具链路演示”和“DeepSeek 实时模型”之间切换。模型输入框可填 `deepseek-v4-flash` 或 `deepseek-v4-pro`；录制时优先展示 DeepSeek 实时模型。API Key 只在运行时输入或从环境变量读取，不进入仓库。
+
+## 题目合规自检
+
+运行：
+
+```powershell
+python scripts\audit_assignment.py
+```
+
+当前结果：
+
+```text
+[OK] README.txt exists and is <= 1000 chars
+[OK] Git remote is configured
+[OK] Core agent files exist
+[OK] No forbidden agent framework dependency/import in runtime code
+[OK] No obvious API key committed
+[OK] DeepSeek demo defaults to V4
+[OK] Tests pass
+```

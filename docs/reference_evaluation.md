@@ -28,11 +28,11 @@
 
 ## 已经迁移到 ForgeAgent 的提升
 
-- [coding_agent/memory.py](C:/Users/MR/Desktop/南软实训/coding_agent/memory.py)：本地结构化记忆、BM25 召回、Hot Memory 预算控制、重复检测。
-- [coding_agent/tools/memory.py](C:/Users/MR/Desktop/南软实训/coding_agent/tools/memory.py)：`memory_record` 和 `memory_read` 工具。
-- [coding_agent/agent.py](C:/Users/MR/Desktop/南软实训/coding_agent/agent.py)：系统提示词自动注入项目热记忆，任务完成后自动记录工作摘要。
-- [scripts/run_demo.py](C:/Users/MR/Desktop/南软实训/scripts/run_demo.py)：离线演示会展示代码修改、测试通过和生成的项目记忆。
-- [tests/test_memory.py](C:/Users/MR/Desktop/南软实训/tests/test_memory.py)：覆盖中文/代码分词、BM25 排序、重复检测和 Hot Memory 预算。
+- `coding_agent/memory.py`：本地结构化记忆、BM25 召回、Hot Memory 预算控制、重复检测。
+- `coding_agent/tools/memory.py`：`memory_record` 和 `memory_read` 工具。
+- `coding_agent/agent.py`：系统提示词自动注入项目热记忆，任务完成后自动记录工作摘要。
+- `scripts/run_demo.py`：离线演示会展示代码修改、测试通过和生成的项目记忆。
+- `tests/test_memory.py`：覆盖中文/代码分词、BM25 排序、重复检测和 Hot Memory 预算。
 
 ## 和题目要求的对应关系
 

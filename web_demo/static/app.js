@@ -1,8 +1,10 @@
 const runBtn = document.getElementById("runBtn");
+const runBatchBtn = document.getElementById("runBatchBtn");
 const statusEl = document.getElementById("status");
 const taskEl = document.getElementById("task");
 const flowEl = document.getElementById("flow");
 const transcriptEl = document.getElementById("transcript");
+const answerView = document.getElementById("answerView");
 const codeView = document.getElementById("codeView");
 const testView = document.getElementById("testView");
 const diffView = document.getElementById("diffView");
@@ -11,6 +13,8 @@ const memoryView = document.getElementById("memoryView");
 const auditGrid = document.getElementById("auditGrid");
 const toolCallsEl = document.getElementById("toolCalls");
 const workspacePath = document.getElementById("workspacePath");
+const historyView = document.getElementById("historyView");
+const resultLine = document.getElementById("resultLine");
 const stepsMetric = document.getElementById("stepsMetric");
 const testsMetric = document.getElementById("testsMetric");
 const memoryMetric = document.getElementById("memoryMetric");
@@ -26,6 +30,7 @@ const flow = [
   ["Observation", "工具结果回填上下文"],
   ["Final", "验证后结束并写入项目记忆"],
 ];
+const runHistory = [];
 
 function renderFlow(active = 0, done = 0) {
   flowEl.innerHTML = flow.map((item, index) => {
@@ -101,7 +106,7 @@ async function loadConfig() {
     const response = await fetch("/api/config");
     const data = await response.json();
     baseUrlEl.value = data.deepseek_base_url || "https://api.deepseek.com";
-    modelNameEl.value = data.deepseek_model || "deepseek-chat";
+    modelNameEl.value = data.deepseek_model || "deepseek-v4-flash";
     if (data.deepseek_configured) apiKeyEl.placeholder = "已检测到环境变量，可留空";
   } catch {
     // The demo can still run offline.
@@ -109,10 +114,17 @@ async function loadConfig() {
 }
 
 async function runDemo() {
+  return runOnce();
+}
+
+async function runOnce(batchIndex = null, propagateError = false) {
   runBtn.disabled = true;
-  setStatus("running", "正在运行");
+  runBatchBtn.disabled = true;
+  const prefix = batchIndex ? `第 ${batchIndex} 次` : "正在";
+  setStatus("running", `${prefix}运行`);
   renderFlow(1, 0);
   transcriptEl.textContent = "后端正在重置演示工作区并运行 Agent...";
+  answerView.textContent = "等待 final";
   codeView.textContent = "等待生成";
   diffView.textContent = "等待 diff";
   testView.textContent = "等待测试";
@@ -120,6 +132,7 @@ async function runDemo() {
   memoryView.textContent = "等待写入";
   toolCallsEl.textContent = "等待本地工具调用";
   workspacePath.textContent = "workspace: 后端正在创建演示工作区";
+  resultLine.textContent = "模型正在给出 action，本地工具会逐步执行。";
   stepsMetric.textContent = "0";
   testsMetric.textContent = "-";
   memoryMetric.textContent = "-";
@@ -143,6 +156,7 @@ async function runDemo() {
     renderTranscript(data.transcript);
     renderToolCalls(data.tool_calls || []);
     workspacePath.textContent = `workspace: ${data.workspace || "unknown"}`;
+    answerView.textContent = data.answer || "(no final answer)";
     codeView.textContent = data.files.fizzbuzz || "(missing)";
     diffView.textContent = data.file_diff || "(no diff)";
     testView.textContent = data.test_output || "(no test output)";
@@ -152,14 +166,56 @@ async function runDemo() {
     testsMetric.textContent = data.tests_passed ? "pass" : "check";
     memoryMetric.textContent = data.memory_recorded ? "yes" : "no";
     renderAudit(data.audit);
+    addHistory(data);
+    resultLine.textContent = `run ${data.run_id || "-"} · ${data.model || "-"} · ${data.duration_ms || 0} ms · ${data.tests_passed ? "tests passed" : "tests need check"}`;
     setStatus("done", "运行完成");
+    return data;
   } catch (error) {
     renderFlow(0, 0);
     transcriptEl.textContent = error.message;
+    resultLine.textContent = error.message;
     setStatus("error", "运行失败");
+    if (propagateError) throw error;
+    return null;
   } finally {
     runBtn.disabled = false;
+    runBatchBtn.disabled = false;
   }
+}
+
+function addHistory(data) {
+  runHistory.unshift({
+    run_id: data.run_id,
+    model: data.model,
+    mode: data.mode,
+    duration_ms: data.duration_ms,
+    steps: data.steps,
+    tests_passed: data.tests_passed,
+    tools: (data.tool_calls || []).map((item) => item.tool),
+  });
+  if (runHistory.length > 8) runHistory.pop();
+  historyView.innerHTML = runHistory.map((item, index) => `
+    <article class="history-item ${item.tests_passed ? "ok" : "warn"}">
+      <div>
+        <strong>#${runHistory.length - index} ${escapeHtml(item.model)}</strong>
+        <p>${escapeHtml(item.mode)} · ${item.steps} steps · ${item.duration_ms} ms</p>
+      </div>
+      <span>${item.tests_passed ? "pass" : "check"}</span>
+      <code>${escapeHtml(item.tools.join(" -> "))}</code>
+    </article>
+  `).join("");
+}
+
+async function runBatch() {
+  runBatchBtn.disabled = true;
+  for (let i = 1; i <= 3; i += 1) {
+    try {
+      await runOnce(i, true);
+    } catch {
+      break;
+    }
+  }
+  runBatchBtn.disabled = false;
 }
 
 renderFlow();
@@ -171,3 +227,4 @@ document.querySelectorAll('input[name="mode"]').forEach((input) => {
   });
 });
 runBtn.addEventListener("click", runDemo);
+runBatchBtn.addEventListener("click", runBatch);

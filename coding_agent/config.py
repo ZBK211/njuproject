@@ -22,3 +22,11 @@ class Settings:
             timeout_seconds=float(os.getenv("OPENAI_TIMEOUT", "60")),
         )
 
+    @classmethod
+    def from_deepseek_env(cls) -> "Settings":
+        return cls(
+            api_key=os.getenv("DEEPSEEK_API_KEY", ""),
+            base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/"),
+            model=os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
+            timeout_seconds=float(os.getenv("DEEPSEEK_TIMEOUT", "60")),
+        )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from typing import Any
 
@@ -18,11 +19,15 @@ def _run_command(context: ToolContext, args: dict[str, Any]) -> str:
     if context.approve_commands is not None and not context.approve_commands(command):
         return "DENIED: command was not approved"
     timeout = min(float(args.get("timeout", context.command_timeout)), context.command_timeout)
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
     try:
         completed = subprocess.run(
             command,
             cwd=context.root,
             shell=True,
+            env=env,
             text=True,
             capture_output=True,
             timeout=timeout,

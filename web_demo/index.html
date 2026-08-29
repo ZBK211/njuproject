@@ -28,10 +28,13 @@
     <section class="topbar">
       <div>
         <p class="eyebrow">Local Demo</p>
-        <h1>看得见的 coding agent 全链路</h1>
+        <h1>DeepSeek V4 驱动的本地 Coding Agent</h1>
         <p class="run-path" id="workspacePath">workspace: 等待运行</p>
       </div>
-      <button id="runBtn" type="button">运行一次</button>
+      <div class="actions">
+        <button id="runBtn" type="button">运行一次</button>
+        <button id="runBatchBtn" class="secondary" type="button">连续运行 3 次</button>
+      </div>
     </section>
 
     <section id="run" class="workspace">
@@ -47,7 +50,11 @@
         </div>
         <div class="provider-box" id="providerBox" hidden>
           <input id="baseUrl" value="https://api.deepseek.com" aria-label="DeepSeek base URL">
-          <input id="modelName" value="deepseek-chat" aria-label="DeepSeek model">
+          <input id="modelName" value="deepseek-v4-flash" list="modelOptions" aria-label="DeepSeek model">
+          <datalist id="modelOptions">
+            <option value="deepseek-v4-flash"></option>
+            <option value="deepseek-v4-pro"></option>
+          </datalist>
           <input id="apiKey" type="password" placeholder="API Key 可留空，优先读取环境变量" aria-label="DeepSeek API Key">
         </div>
         <div class="metrics">
@@ -55,6 +62,7 @@
           <div><span id="testsMetric">-</span><small>tests</small></div>
           <div><span id="memoryMetric">-</span><small>memory</small></div>
         </div>
+        <div class="result-line" id="resultLine">尚未运行。输入编程任务后，Agent 会在临时 workspace 中读写文件并运行验证命令。</div>
       </div>
 
       <div class="panel flow-panel" id="architecture">
@@ -72,8 +80,19 @@
         <div class="tool-calls" id="toolCalls">尚未运行</div>
       </div>
       <div class="panel">
+        <div class="panel-head"><span>运行历史</span><span>multi-run</span></div>
+        <div class="history" id="historyView">暂无历史。可以连续运行 3 次检查稳定性。</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
         <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
         <div class="log" id="transcript">点击“运行一次”后显示每一轮模型动作和本地工具观察。</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>最终回答</span><span>final answer</span></div>
+        <pre id="answerView">尚未运行</pre>
       </div>
     </section>
 
