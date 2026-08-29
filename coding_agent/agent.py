@@ -87,7 +87,15 @@ class Agent:
                 self._record_completion(answer, transcript)
                 return AgentResult("completed", answer, step, transcript)
             observation = self.registry.execute(action.tool or "", action.arguments or {})
-            transcript.append({"step": step, "type": "tool", "tool": action.tool, "text": observation})
+            transcript.append(
+                {
+                    "step": step,
+                    "type": "tool",
+                    "tool": action.tool,
+                    "arguments": action.arguments or {},
+                    "text": observation,
+                }
+            )
             messages.append({"role": "user", "content": json.dumps({"kind": "tool_result", "tool": action.tool, "output": observation}, ensure_ascii=False)})
             if on_event:
                 on_event("tool", step, f"{action.tool}: {observation}")

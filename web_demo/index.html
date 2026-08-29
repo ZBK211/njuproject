@@ -21,7 +21,7 @@
       <a href="#memory">项目记忆</a>
       <a href="#audit">合规检查</a>
     </nav>
-    <div class="note">本页面调用本机后端。默认使用离线 DemoModel，不需要 API Key。</div>
+    <div class="note">本页面调用本机后端。默认模式会稳定复现本地工具链路；DeepSeek 模式用于验证真实模型，但会受外部接口延迟影响。</div>
   </aside>
 
   <main>
@@ -29,6 +29,7 @@
       <div>
         <p class="eyebrow">Local Demo</p>
         <h1>看得见的 coding agent 全链路</h1>
+        <p class="run-path" id="workspacePath">workspace: 等待运行</p>
       </div>
       <button id="runBtn" type="button">运行一次</button>
     </section>
@@ -40,6 +41,15 @@
           <span id="status" class="status idle">等待运行</span>
         </div>
         <textarea id="task">Implement the FizzBuzz task in the workspace and verify it with tests.</textarea>
+        <div class="mode-box">
+          <label><input type="radio" name="mode" value="offline" checked> 本地工具链路演示</label>
+          <label><input type="radio" name="mode" value="deepseek"> DeepSeek 实时模型</label>
+        </div>
+        <div class="provider-box" id="providerBox" hidden>
+          <input id="baseUrl" value="https://api.deepseek.com" aria-label="DeepSeek base URL">
+          <input id="modelName" value="deepseek-chat" aria-label="DeepSeek model">
+          <input id="apiKey" type="password" placeholder="API Key 可留空，优先读取环境变量" aria-label="DeepSeek API Key">
+        </div>
         <div class="metrics">
           <div><span id="stepsMetric">0</span><small>steps</small></div>
           <div><span id="testsMetric">-</span><small>tests</small></div>
@@ -57,13 +67,24 @@
     </section>
 
     <section class="grid">
+      <div class="panel tool-panel">
+        <div class="panel-head"><span>本地工具调用</span><span>local tools</span></div>
+        <div class="tool-calls" id="toolCalls">尚未运行</div>
+      </div>
       <div class="panel">
         <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
         <div class="log" id="transcript">点击“运行一次”后显示每一轮模型动作和本地工具观察。</div>
       </div>
+    </section>
+
+    <section class="grid">
       <div class="panel">
         <div class="panel-head"><span>最终代码</span><span>fizzbuzz.py</span></div>
         <pre id="codeView">尚未运行</pre>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>文件差异</span><span>real diff</span></div>
+        <pre id="diffView">尚未运行</pre>
       </div>
     </section>
 
@@ -72,9 +93,24 @@
         <div class="panel-head"><span>测试输出</span><span>pytest</span></div>
         <pre id="testView">尚未运行</pre>
       </div>
+      <div class="panel">
+        <div class="panel-head"><span>测试文件</span><span>test_fizzbuzz.py</span></div>
+        <pre id="testFileView">尚未运行</pre>
+      </div>
+    </section>
+
+    <section class="grid one-two">
       <div class="panel" id="memory">
         <div class="panel-head"><span>项目记忆</span><span>.agent/PROJECT_MEMORY.md</span></div>
         <pre id="memoryView">尚未运行</pre>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>运行说明</span><span>what is real</span></div>
+        <div class="explain">
+          <p>这个 demo 的后端会重置一个临时 workspace，然后把任务交给 ForgeAgent。</p>
+          <p>默认模式使用确定性的 DemoModel，目的是稳定展示 Agent 如何调用本地工具；DeepSeek 模式会把同一套工具协议交给真实模型。</p>
+          <p>页面里的工具输出、文件内容、代码 diff、pytest 输出、项目记忆都来自本机真实执行结果，不是预先写死的截图。</p>
+        </div>
       </div>
     </section>
 

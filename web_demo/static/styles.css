@@ -78,6 +78,12 @@ main { padding: 24px; display: grid; gap: 18px; }
   text-transform: uppercase;
 }
 h1 { margin: 0; font-size: 28px; line-height: 1.25; letter-spacing: 0; }
+.run-path {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font: 12px/1.45 Consolas, "Cascadia Mono", monospace;
+  word-break: break-all;
+}
 button {
   border: 0;
   border-radius: 7px;
@@ -132,6 +138,39 @@ textarea {
   color: var(--ink);
   font: inherit;
   line-height: 1.5;
+}
+
+.mode-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 16px 12px;
+}
+.mode-box label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #fbfcfd;
+  font-size: 13px;
+}
+.mode-box input { accent-color: var(--accent); }
+
+.provider-box {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr 1.2fr;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+.provider-box input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: var(--ink);
+  font: 12px/1.4 Consolas, "Cascadia Mono", monospace;
 }
 
 .status {
@@ -207,6 +246,75 @@ textarea {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.tool-calls {
+  min-height: 320px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #f9fbfc;
+}
+.tool-call {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+}
+.tool-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.tool-top strong { color: var(--accent); }
+.tool-top span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tool-call p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.tool-args {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f6f7f9;
+}
+.tool-args span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.tool-args code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink);
+  font: 12px/1.45 Consolas, "Cascadia Mono", monospace;
+}
+.tool-call pre {
+  min-height: 0;
+  max-height: 130px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.one-two { grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); }
+.explain {
+  padding: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.explain p { margin: 0 0 12px; }
 
 .audit-panel { margin-bottom: 24px; }
 .audit-grid {

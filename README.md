@@ -24,6 +24,8 @@ python -m coding_agent "Add tests and improve the error handling" --root .
 
 The runtime reads `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_TIMEOUT`. Secrets are never read from a tracked file. The CLI asks before running shell commands; pass `--yes` only in a trusted disposable workspace. Destructive commands such as recursive forced deletion, `git reset --hard`, and disk shutdown/format commands are blocked before approval.
 
+The web demo also supports a DeepSeek real-model mode. It accepts the key from the password field at runtime or from `DEEPSEEK_API_KEY`; the value is not written to the repository, screenshot assets, or generated submission files.
+
 ## Architecture
 
 `Agent` owns the loop and transcript. `ToolRegistry` owns explicit schemas and dispatch. File tools are workspace-scoped and shell output is bounded and time-limited. The model is an adapter behind a tiny protocol, so tests use a deterministic fake model without network access. `examples/demo_workspace_template` is the reproducible recording target.
@@ -47,7 +49,9 @@ PROJECT MEMORY
 - Agent run completed - Completed run using tools: list_dir, read_file, write_file, run_command.
 ```
 
-For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, runs the same offline agent workflow, and displays the transcript, generated code, pytest output, project memory, and assignment compliance checks.
+For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and displays the workspace path, local tool calls, JSON arguments, generated code, real diff, pytest output, project memory, and assignment compliance checks.
+
+![Web demo showing local tool calls](web_demo/assets/demo-local-tools.png)
 
 ## Development
 
