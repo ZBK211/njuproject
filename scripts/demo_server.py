@@ -24,6 +24,13 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "web_demo"
 DEMO_WORKSPACE_ROOT = ROOT / "demo_workspace" / "web_runs"
 DEMO_TEMPLATES = {
+    "scratch": {
+        "path": None,
+        "task": "Create a Python solution for the requested programming task, add useful pytest tests, and verify it locally.",
+        "source": "",
+        "test": "",
+        "offline_model": DemoModel,
+    },
     "fizzbuzz": {
         "path": ROOT / "examples" / "demo_workspace_template",
         "task": "Implement the FizzBuzz task in the workspace and verify it with tests.",
@@ -61,6 +68,11 @@ class DemoHandler(BaseHTTPRequestHandler):
             content_type = "text/css; charset=utf-8" if file_path.suffix == ".css" else "application/javascript; charset=utf-8"
             self._send_file(file_path, content_type)
             return
+        if path.startswith("/assets/"):
+            file_path = WEB_ROOT / "assets" / path.removeprefix("/assets/")
+            content_type = "image/svg+xml; charset=utf-8" if file_path.suffix == ".svg" else "image/png"
+            self._send_file(file_path, content_type)
+            return
         self.send_error(404)
 
     def do_POST(self) -> None:
@@ -76,9 +88,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             template = payload.get("template") if isinstance(payload, dict) else None
             data = run_demo(
                 task if isinstance(task, str) and task.strip() else None,
-                mode=mode if isinstance(mode, str) else "offline",
+                mode=mode if isinstance(mode, str) else "deepseek",
                 provider=provider if isinstance(provider, dict) else {},
-                template=template if isinstance(template, str) else "fizzbuzz",
+                template=template if isinstance(template, str) else "scratch",
             )
             self._send_json(data)
         except Exception as exc:
@@ -109,30 +121,33 @@ class DemoHandler(BaseHTTPRequestHandler):
 
 def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict | None = None, template: str = "fizzbuzz") -> dict:
     started = perf_counter()
-    spec = DEMO_TEMPLATES.get(template, DEMO_TEMPLATES["fizzbuzz"])
+    spec = DEMO_TEMPLATES.get(template, DEMO_TEMPLATES["scratch"])
     DEMO_WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
     run_id = uuid.uuid4().hex[:12]
     workspace = DEMO_WORKSPACE_ROOT / run_id
-    shutil.copytree(spec["path"], workspace, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
-    source_name = str(spec["source"])
-    test_name = str(spec["test"])
-    before_source = _read_text(workspace / source_name)
+    if spec["path"] is None:
+        workspace.mkdir(parents=True)
+    else:
+        shutil.copytree(spec["path"], workspace, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    before_files = _snapshot_workspace(workspace)
     events: list[dict] = []
 
     def on_event(kind: str, step: int, text: str) -> None:
         events.append({"kind": kind, "step": step, "text": text})
 
     model = _make_model(mode, provider or {}, spec)
-    agent = Agent(model, workspace, max_steps=8, approve_commands=lambda command: True)
+    agent = Agent(model, workspace, max_steps=16, approve_commands=lambda command: True)
     result = agent.run(task or str(spec["task"]), on_event=on_event)
     test_output = _last_tool_output(result.transcript, "run_command")
     memory_path = workspace / ".agent" / "PROJECT_MEMORY.md"
-    after_source = _read_text(workspace / source_name)
+    after_files = _snapshot_workspace(workspace)
+    primary_file = _select_primary_file(after_files, before_files, str(spec["source"]))
+    test_file = _select_test_file(after_files, str(spec["test"]))
     return {
         "status": result.status,
         "answer": result.answer,
         "run_id": run_id,
-        "template": template if template in DEMO_TEMPLATES else "fizzbuzz",
+        "template": template if template in DEMO_TEMPLATES else "scratch",
         "mode": mode if mode == "deepseek" else "offline",
         "model": getattr(model, "settings", None).model if hasattr(model, "settings") else "DemoModel",
         "workspace": str(workspace),
@@ -141,13 +156,14 @@ def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict |
         "transcript": result.transcript,
         "tool_calls": _tool_calls(result.transcript),
         "events": events,
-        "primary_file": source_name,
-        "test_file": test_name,
+        "changed_files": _changed_files(before_files, after_files),
+        "primary_file": primary_file,
+        "test_file": test_file,
         "files": {
-            "source": after_source,
-            "test": _read_text(workspace / test_name),
+            "source": after_files.get(primary_file, "") if primary_file else "",
+            "test": after_files.get(test_file, "") if test_file else "",
         },
-        "file_diff": _unified_diff(before_source, after_source, f"before/{source_name}", f"after/{source_name}"),
+        "file_diff": _workspace_diff(before_files, after_files),
         "test_output": test_output,
         "tests_passed": "passed" in test_output and "exit_code=0" in test_output,
         "memory": _read_text(memory_path),
@@ -239,6 +255,58 @@ def _unified_diff(before: str, after: str, fromfile: str, tofile: str) -> str:
             tofile=tofile,
         )
     )
+
+
+def _snapshot_workspace(workspace: Path) -> dict[str, str]:
+    files: dict[str, str] = {}
+    for path in sorted(workspace.rglob("*")):
+        if not path.is_file() or _hidden_or_generated(path, workspace):
+            continue
+        try:
+            files[path.relative_to(workspace).as_posix()] = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+    return files
+
+
+def _hidden_or_generated(path: Path, workspace: Path) -> bool:
+    relative_parts = path.relative_to(workspace).parts
+    blocked = {".git", ".agent", "__pycache__", ".pytest_cache"}
+    if any(part in blocked for part in relative_parts):
+        return True
+    return path.suffix in {".pyc", ".pyo"}
+
+
+def _changed_files(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    names = sorted(set(before) | set(after))
+    return [name for name in names if before.get(name) != after.get(name)]
+
+
+def _select_primary_file(after: dict[str, str], before: dict[str, str], preferred: str) -> str:
+    if preferred and preferred in after:
+        return preferred
+    changed = _changed_files(before, after)
+    candidates = [name for name in changed if name.endswith(".py") and not Path(name).name.startswith("test_")]
+    if candidates:
+        return candidates[0]
+    py_files = [name for name in after if name.endswith(".py") and not Path(name).name.startswith("test_")]
+    return py_files[0] if py_files else (changed[0] if changed else "")
+
+
+def _select_test_file(after: dict[str, str], preferred: str) -> str:
+    if preferred and preferred in after:
+        return preferred
+    tests = [name for name in after if Path(name).name.startswith("test_") and name.endswith(".py")]
+    return tests[0] if tests else ""
+
+
+def _workspace_diff(before: dict[str, str], after: dict[str, str]) -> str:
+    parts = []
+    for name in sorted(set(before) | set(after)):
+        if before.get(name) == after.get(name):
+            continue
+        parts.append(_unified_diff(before.get(name, ""), after.get(name, ""), f"before/{name}", f"after/{name}"))
+    return "\n".join(part for part in parts if part).strip() or "(no file changes)"
 
 
 def main() -> int:

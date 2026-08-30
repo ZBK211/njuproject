@@ -16,32 +16,39 @@
       </div>
     </div>
     <nav>
-      <a class="active" href="#run">演示面板</a>
-      <a href="#tools">工具轨迹</a>
-      <a href="#evidence">验证证据</a>
+      <a class="active" href="#run">任务输入</a>
+      <a href="#tools">工具调用</a>
+      <a href="#evidence">验证结果</a>
     </nav>
     <div class="note">
       <strong>展示顺序</strong>
-      <span>选任务和模型，运行一次；先讲工具调用，再讲 diff 和 pytest；最后切换任务模板说明它不是固定脚本。</span>
+      <span>输入任意编程任务，选择模型后运行；先讲工具调用，再讲 diff 和 pytest。</span>
     </div>
   </aside>
 
   <main>
     <section class="topbar">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">DeepSeek V4 + Local Tools</p>
-        <h1>本地工具可见的 Coding Agent 演示台</h1>
+        <h1>把编程任务交给本地 Agent 执行</h1>
         <p class="run-path" id="workspacePath">workspace: 等待运行</p>
         <div class="quick-guide">
-          <span><b>1</b> 选择任务</span>
-          <span><b>2</b> 选择 DeepSeek 模型</span>
+          <span><b>1</b> 输入任务</span>
+          <span><b>2</b> 选择模型</span>
           <span><b>3</b> 观察本地工具调用</span>
-          <span><b>4</b> 用 diff 和 pytest 收尾</span>
+          <span><b>4</b> 查看 diff 与测试</span>
         </div>
       </div>
+      <img class="hero-visual" src="/assets/agent-console.svg" alt="Task, model and local tools workflow">
       <div class="actions">
-        <button id="runBtn" type="button">运行一次</button>
-        <button id="runBatchBtn" class="secondary" type="button">连续运行 3 次</button>
+        <label class="run-count" for="runCount">运行次数
+          <select id="runCount">
+            <option value="1">1 次</option>
+            <option value="2">2 次</option>
+            <option value="3">3 次</option>
+          </select>
+        </label>
+        <button id="runBtn" type="button">开始运行</button>
       </div>
     </section>
 
@@ -51,37 +58,38 @@
           <span>输入任务</span>
           <span id="status" class="status idle">等待运行</span>
         </div>
-        <textarea id="task">Implement the FizzBuzz task in the workspace and verify it with tests.</textarea>
-        <div class="template-box">
-          <label for="templateSelect">任务模板</label>
-          <select id="templateSelect">
-            <option value="fizzbuzz">FizzBuzz 列表函数</option>
-            <option value="text_tools">文本归一化工具</option>
-          </select>
+        <textarea id="task">Create a Python solution for the N-Queens problem. Implement solve_n_queens(n) in n_queens.py, add pytest tests for n=1, n=4 and n=5, and run the tests locally.</textarea>
+        <div class="sample-box">
+          <span>示例任务</span>
+          <button class="sample-chip active" type="button" data-sample="nqueens">N 皇后</button>
+          <button class="sample-chip" type="button" data-sample="text">文本归一化</button>
+          <button class="sample-chip" type="button" data-sample="fizzbuzz">FizzBuzz</button>
         </div>
-        <div class="mode-box">
-          <label><input type="radio" name="mode" value="offline" checked> 离线回归演示</label>
-          <label><input type="radio" name="mode" value="deepseek"> DeepSeek 实时模型</label>
-        </div>
-        <div class="provider-box" id="providerBox" hidden>
+        <div class="provider-box" id="providerBox">
+          <label>Base URL
           <input id="baseUrl" value="https://api.deepseek.com" aria-label="DeepSeek base URL">
+          </label>
+          <label>模型
           <input id="modelName" value="deepseek-v4-flash" list="modelOptions" aria-label="DeepSeek model">
+          </label>
           <datalist id="modelOptions">
             <option value="deepseek-v4-flash"></option>
             <option value="deepseek-v4-pro"></option>
           </datalist>
+          <label>API Key
           <input id="apiKey" type="password" placeholder="API Key 可留空，优先读取环境变量" aria-label="DeepSeek API Key">
+          </label>
         </div>
         <div class="run-guide">
-          <div><strong>课堂展示</strong><span>运行 DeepSeek 后，重点解释模型如何选择 read_file、edit_file、run_command。</span></div>
-          <div><strong>稳定性展示</strong><span>点击连续运行 3 次，确认不同 run id 下都能完成同一链路。</span></div>
+          <div><strong>自由任务</strong><span>不是固定模板：Agent 会在临时工作区自行创建文件、修改代码并执行验证命令。</span></div>
+          <div><strong>运行次数</strong><span>默认跑 1 次；需要展示稳定性时把次数改成 2 或 3，仍然使用同一个开始按钮。</span></div>
         </div>
         <div class="metrics">
           <div><span id="stepsMetric">0</span><small>执行步数</small></div>
           <div><span id="testsMetric">-</span><small>测试结果</small></div>
           <div><span id="memoryMetric">-</span><small>记忆写入</small></div>
         </div>
-        <div class="result-line" id="resultLine">等待运行：先选任务和模型，然后点击运行。</div>
+        <div class="result-line" id="resultLine">等待运行：输入任务，选择 DeepSeek 模型，然后点击开始运行。</div>
       </div>
 
       <div class="panel tool-panel featured" id="tools">
@@ -103,14 +111,14 @@
       </div>
       <div class="panel">
         <div class="panel-head"><span>运行历史</span><span>multi-run</span></div>
-        <div class="history" id="historyView">暂无历史。可以连续运行 3 次检查稳定性。</div>
+        <div class="history" id="historyView">暂无历史。把运行次数改成 2 或 3，可以检查同一任务在独立工作区中的稳定性。</div>
       </div>
     </section>
 
     <section class="grid" id="evidence">
       <div class="panel">
         <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
-        <div class="log" id="transcript">点击“运行一次”后显示每一轮模型动作和本地工具观察。</div>
+        <div class="log" id="transcript">点击“开始运行”后显示每一轮模型动作和本地工具观察。</div>
       </div>
       <div class="panel">
         <div class="panel-head"><span>最终回答</span><span>final answer</span></div>
@@ -120,7 +128,7 @@
 
     <section class="grid">
       <div class="panel">
-        <div class="panel-head"><span>最终代码</span><span id="codeFileLabel">fizzbuzz.py</span></div>
+        <div class="panel-head"><span>最终代码</span><span id="codeFileLabel">等待生成</span></div>
         <pre id="codeView">尚未运行</pre>
       </div>
       <div class="panel">
@@ -135,7 +143,7 @@
         <pre id="testView">尚未运行</pre>
       </div>
       <div class="panel">
-        <div class="panel-head"><span>测试文件</span><span id="testFileLabel">test_fizzbuzz.py</span></div>
+        <div class="panel-head"><span>测试文件</span><span id="testFileLabel">等待生成</span></div>
         <pre id="testFileView">尚未运行</pre>
       </div>
     </section>

@@ -1,5 +1,5 @@
 const runBtn = document.getElementById("runBtn");
-const runBatchBtn = document.getElementById("runBatchBtn");
+const runCountEl = document.getElementById("runCount");
 const statusEl = document.getElementById("status");
 const taskEl = document.getElementById("task");
 const flowEl = document.getElementById("flow");
@@ -27,11 +27,11 @@ const providerBox = document.getElementById("providerBox");
 const baseUrlEl = document.getElementById("baseUrl");
 const modelNameEl = document.getElementById("modelName");
 const apiKeyEl = document.getElementById("apiKey");
-const templateSelect = document.getElementById("templateSelect");
 
-const taskTemplates = {
-  fizzbuzz: "Implement the FizzBuzz task in the workspace and verify it with tests.",
-  text_tools: "Implement normalize_words(text) in text_tools.py and verify it with tests.",
+const taskSamples = {
+  nqueens: "Create a Python solution for the N-Queens problem. Implement solve_n_queens(n) in n_queens.py, add pytest tests for n=1, n=4 and n=5, and run the tests locally.",
+  text: "Create text_tools.py with normalize_words(text). It should return sorted unique lowercase alphanumeric tokens. Add pytest tests for empty input, punctuation, repeated words and numbers, then run them locally.",
+  fizzbuzz: "Create fizzbuzz.py with fizzbuzz(n). It should return the FizzBuzz sequence from 1 to n and [] for n <= 0. Add pytest tests for edge cases and n=15, then run them locally.",
 };
 
 const flow = [
@@ -69,10 +69,6 @@ function renderTranscript(items) {
     const title = item.tool ? `${item.type.toUpperCase()} ${item.step} ${item.tool}` : `${item.type.toUpperCase()} ${item.step}`;
     return `[${title}]\n${item.text}`;
   }).join("\n\n");
-}
-
-function selectedMode() {
-  return document.querySelector('input[name="mode"]:checked')?.value || "offline";
 }
 
 function renderToolCalls(items) {
@@ -113,12 +109,7 @@ async function loadConfig() {
     modelNameEl.value = data.deepseek_model || "deepseek-v4-flash";
     if (data.deepseek_configured) {
       apiKeyEl.placeholder = "已检测到环境变量，可留空";
-      const deepseekRadio = document.querySelector('input[name="mode"][value="deepseek"]');
-      if (deepseekRadio) {
-        deepseekRadio.checked = true;
-        providerBox.hidden = false;
-      }
-      resultLine.textContent = "已检测到 DeepSeek 配置：可以直接点击运行一次。";
+      resultLine.textContent = "已检测到 DeepSeek 配置：可以直接点击开始运行。";
     }
   } catch {
     // The demo can still run offline.
@@ -126,12 +117,20 @@ async function loadConfig() {
 }
 
 async function runDemo() {
-  return runOnce();
+  const count = Math.max(1, Math.min(Number(runCountEl.value || 1), 3));
+  runBtn.disabled = true;
+  for (let i = 1; i <= count; i += 1) {
+    try {
+      await runOnce(count > 1 ? i : null, true);
+    } catch {
+      break;
+    }
+  }
+  runBtn.disabled = false;
 }
 
 async function runOnce(batchIndex = null, propagateError = false) {
   runBtn.disabled = true;
-  runBatchBtn.disabled = true;
   const prefix = batchIndex ? `第 ${batchIndex} 次` : "正在";
   setStatus("running", `${prefix}运行`);
   renderFlow(1, 0);
@@ -158,8 +157,8 @@ async function runOnce(batchIndex = null, propagateError = false) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         task: taskEl.value,
-        template: templateSelect.value,
-        mode: selectedMode(),
+        template: "scratch",
+        mode: "deepseek",
         provider: {
           base_url: baseUrlEl.value,
           model: modelNameEl.value,
@@ -203,8 +202,7 @@ async function runOnce(batchIndex = null, propagateError = false) {
     if (propagateError) throw error;
     return null;
   } finally {
-    runBtn.disabled = false;
-    runBatchBtn.disabled = false;
+    if (!batchIndex) runBtn.disabled = false;
   }
 }
 
@@ -212,7 +210,7 @@ function addHistory(data) {
   runHistory.unshift({
     run_id: data.run_id,
     model: data.model,
-    mode: data.mode,
+    mode: "deepseek",
     duration_ms: data.duration_ms,
     steps: data.steps,
     tests_passed: data.tests_passed,
@@ -231,27 +229,13 @@ function addHistory(data) {
   `).join("");
 }
 
-async function runBatch() {
-  runBatchBtn.disabled = true;
-  for (let i = 1; i <= 3; i += 1) {
-    try {
-      await runOnce(i, true);
-    } catch {
-      break;
-    }
-  }
-  runBatchBtn.disabled = false;
-}
-
 renderFlow();
 loadConfig();
-document.querySelectorAll('input[name="mode"]').forEach((input) => {
-  input.addEventListener("change", () => {
-    providerBox.hidden = selectedMode() !== "deepseek";
+document.querySelectorAll(".sample-chip").forEach((button) => {
+  button.addEventListener("click", () => {
+    const key = button.dataset.sample;
+    taskEl.value = taskSamples[key] || taskSamples.nqueens;
+    document.querySelectorAll(".sample-chip").forEach((item) => item.classList.toggle("active", item === button));
   });
 });
-templateSelect.addEventListener("change", () => {
-  taskEl.value = taskTemplates[templateSelect.value] || taskTemplates.fizzbuzz;
-});
 runBtn.addEventListener("click", runDemo);
-runBatchBtn.addEventListener("click", runBatch);

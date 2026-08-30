@@ -11,7 +11,6 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python -m pytest -q
-python scripts/run_demo.py
 python scripts/run_deepseek_demo.py
 python scripts/demo_server.py
 ```
@@ -29,7 +28,7 @@ For the DeepSeek V4 path, set `DEEPSEEK_API_KEY` and run `python scripts/run_dee
 
 ## Architecture
 
-`Agent` owns the loop and transcript. `ToolRegistry` owns explicit schemas and dispatch. File tools are workspace-scoped and shell output is bounded and time-limited. The model is an adapter behind a tiny protocol, so tests use a deterministic fake model without network access. `examples/demo_workspace_template` is the reproducible recording target.
+`Agent` owns the loop and transcript. `ToolRegistry` owns explicit schemas and dispatch. File tools are workspace-scoped and shell output is bounded and time-limited. The model is an adapter behind a tiny protocol, so production runs use DeepSeek through an OpenAI-compatible API while tests can use a deterministic fake model without network access.
 
 The project also includes a local memory layer inspired by the design of `dsh-memoir`: completed tool-using runs are distilled into `.agent/memory.json`, rendered to `.agent/PROJECT_MEMORY.md`, retrieved with lexical BM25 over Chinese text, English words, and code identifiers, and injected into future runs as bounded Hot Memory. The memory feature is implemented in Python in this repository and does not require the DSH plugin runtime.
 
@@ -47,7 +46,7 @@ Read the code in this order when reviewing the implementation: `coding_agent/age
 
 ## Demo Output
 
-`python scripts/run_deepseek_demo.py` resets a small FizzBuzz workspace, lets DeepSeek V4 inspect and edit the file through ForgeAgent tools, runs pytest locally, then prints the generated project memory. A successful run shows:
+`python scripts/run_deepseek_demo.py` resets a small workspace, lets DeepSeek V4 inspect and edit files through ForgeAgent tools, runs pytest locally, then prints the generated project memory. A successful run shows:
 
 ```text
 [MODEL 1] {"kind":"tool","tool":"list_dir","arguments":{"path":"."}}
@@ -63,13 +62,13 @@ PROJECT MEMORY
 - Agent run completed - Completed run using tools: list_dir, read_file, edit_file, run_command.
 ```
 
-For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web demo calls the local backend, resets `demo_workspace`, runs the same agent workflow, and puts the most important evidence on screen: local tool calls, JSON arguments, generated code, real diff, pytest output, workspace path, run history, and project memory. Use “DeepSeek 实时模型” for the strongest assessment demo, and keep the offline mode for deterministic regression checks.
+For recording and visual inspection, run `python scripts/demo_server.py` and open `http://127.0.0.1:8787`. The web page is API-only: it sends the task to DeepSeek V4, creates an isolated scratch workspace, and puts the important evidence on screen: local tool calls, JSON arguments, generated code, real diff, pytest output, workspace path, run history, and project memory. The example buttons only fill the prompt; the agent can also start from a blank workspace and create files for a new task such as N-Queens.
 
 ![Web demo showing DeepSeek V4 local tool calls](web_demo/assets/demo-deepseek-v4.png)
 
-The demo page can be run more than once. Each browser run receives an isolated workspace under `demo_workspace/web_runs/`, so command-line and browser demonstrations do not overwrite each other.
+The demo page can be run more than once. Each browser run receives an isolated workspace under `demo_workspace/web_runs/`, so repeated checks do not overwrite each other.
 
-The demo is not limited to FizzBuzz. Use `python scripts/run_deepseek_demo.py --template text_tools` or choose “文本归一化工具” on the web page to run a second task where the agent implements `normalize_words(text)` from tests. To try DeepSeek V4 Pro, set `DEEPSEEK_MODEL=deepseek-v4-pro` or edit the model field on the web page.
+The command-line demo still includes reproducible FizzBuzz and text-normalization tasks for regression checks. To try DeepSeek V4 Pro, set `DEEPSEEK_MODEL=deepseek-v4-pro` or edit the model field on the web page.
 
 ## Assignment Audit
 
