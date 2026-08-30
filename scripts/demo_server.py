@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sys
 import argparse
@@ -142,7 +143,8 @@ def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict |
     memory_path = workspace / ".agent" / "PROJECT_MEMORY.md"
     after_files = _snapshot_workspace(workspace)
     primary_file = _select_primary_file(after_files, before_files, str(spec["source"]))
-    test_file = _select_test_file(after_files, str(spec["test"]))
+    test_file = _select_test_file(after_files, str(spec["test"]), result.transcript)
+    changed_files = _changed_files(before_files, after_files)
     return {
         "status": result.status,
         "answer": result.answer,
@@ -156,7 +158,8 @@ def run_demo(task: str | None = None, *, mode: str = "offline", provider: dict |
         "transcript": result.transcript,
         "tool_calls": _tool_calls(result.transcript),
         "events": events,
-        "changed_files": _changed_files(before_files, after_files),
+        "changed_files": changed_files,
+        "changed_file_paths": [str(workspace / name) for name in changed_files],
         "primary_file": primary_file,
         "test_file": test_file,
         "files": {
@@ -293,11 +296,41 @@ def _select_primary_file(after: dict[str, str], before: dict[str, str], preferre
     return py_files[0] if py_files else (changed[0] if changed else "")
 
 
-def _select_test_file(after: dict[str, str], preferred: str) -> str:
+def _select_test_file(after: dict[str, str], preferred: str, transcript: list[dict] | None = None) -> str:
     if preferred and preferred in after:
         return preferred
-    tests = [name for name in after if Path(name).name.startswith("test_") and name.endswith(".py")]
+    pytest_targets = _pytest_targets(transcript or [])
+    for target in pytest_targets:
+        if target in after:
+            return target
+    tests = [
+        name
+        for name, content in after.items()
+        if name.endswith(".py")
+        and (
+            Path(name).name.startswith("test_")
+            or Path(name).stem.endswith("_test")
+            or "def test_" in content
+        )
+    ]
     return tests[0] if tests else ""
+
+
+def _pytest_targets(transcript: list[dict]) -> list[str]:
+    targets: list[str] = []
+    for item in transcript:
+        if item.get("type") != "tool" or item.get("tool") != "run_command":
+            continue
+        arguments = item.get("arguments", {})
+        if not isinstance(arguments, dict):
+            continue
+        command = str(arguments.get("command", ""))
+        if "pytest" not in command:
+            continue
+        for match in re.findall(r"(?<![\w./\\-])([\w./\\-]+\.py)(?![\w.-])", command):
+            normalized = match.replace("\\", "/").lstrip("./")
+            targets.append(normalized)
+    return targets
 
 
 def _workspace_diff(before: dict[str, str], after: dict[str, str]) -> str:

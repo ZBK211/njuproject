@@ -188,10 +188,13 @@ async function runOnce(batchIndex = null, propagateError = false) {
     addHistory(data);
     const tools = (data.tool_calls || []).map((item) => item.tool).join(" -> ");
     const changedFiles = (data.changed_files || []).join(", ");
+    const changedPaths = (data.changed_file_paths || []).join("\n");
     resultLine.textContent = `完成：run ${data.run_id || "-"} / ${data.model || "-"} / ${data.duration_ms || 0} ms / ${data.tests_passed ? "tests passed" : "tests need check"}`;
     evidenceRun.textContent = `本次 run id 是 ${data.run_id || "-"}，workspace 是 ${data.workspace || "unknown"}。`;
     evidenceTools.textContent = `工具轨迹：${tools || "无"}`;
-    fileSummary.textContent = changedFiles || "没有检测到文件变化。";
+    fileSummary.textContent = changedFiles
+      ? `${changedFiles}\n\n位置：\n${changedPaths}`
+      : "没有检测到文件变化。";
     testSummary.textContent = data.tests_passed
       ? `测试通过：${compactTestOutput(data.test_output)}`
       : `测试未通过：${compactTestOutput(data.test_output)}`;
