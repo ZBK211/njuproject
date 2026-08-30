@@ -115,52 +115,55 @@
       </div>
     </section>
 
-    <section class="grid" id="evidence">
-      <div class="panel">
-        <div class="panel-head"><span>模型动作与工具结果</span><span>transcript</span></div>
-        <div class="log" id="transcript">点击“开始运行”后显示每一轮模型动作和本地工具观察。</div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><span>最终回答</span><span>final answer</span></div>
-        <pre id="answerView">尚未运行</pre>
-      </div>
-    </section>
-
-    <section class="grid">
-      <div class="panel">
-        <div class="panel-head"><span>最终代码</span><span id="codeFileLabel">等待生成</span></div>
-        <pre id="codeView">尚未运行</pre>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><span>文件差异</span><span>real diff</span></div>
-        <pre id="diffView">尚未运行</pre>
-      </div>
-    </section>
-
-    <section class="grid">
-      <div class="panel">
-        <div class="panel-head"><span>测试输出</span><span>pytest</span></div>
-        <pre id="testView">尚未运行</pre>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><span>测试文件</span><span id="testFileLabel">等待生成</span></div>
-        <pre id="testFileView">尚未运行</pre>
-      </div>
-    </section>
-
-    <section class="grid one-two">
-      <div class="panel" id="memory">
-        <div class="panel-head"><span>项目记忆</span><span>.agent/PROJECT_MEMORY.md</span></div>
-        <pre id="memoryView">尚未运行</pre>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><span>本次运行摘要</span><span>dynamic evidence</span></div>
+    <section class="result-board" id="evidence">
+      <div class="panel result-summary">
+        <div class="panel-head"><span>运行结论</span><span>答辩先看这里</span></div>
+        <div class="summary-grid">
+          <article>
+            <small>任务结果</small>
+            <p id="answerView">尚未运行。完成后这里会用一句话说明 Agent 做成了什么。</p>
+          </article>
+          <article>
+            <small>测试验证</small>
+            <p id="testSummary">尚未运行。这里会显示 pytest 是否通过。</p>
+          </article>
+          <article>
+            <small>文件变化</small>
+            <p id="fileSummary">尚未运行。这里会列出本次创建或修改的文件。</p>
+          </article>
+        </div>
         <div class="evidence-list">
           <p id="evidenceRun">运行后这里显示本次 run id 和 workspace。</p>
           <p id="evidenceTools">工具轨迹会按模型真实动作更新。</p>
-          <p id="evidenceTests">测试结果会显示 pytest 是否通过。</p>
         </div>
       </div>
+    </section>
+
+    <section class="details-board">
+      <details class="detail-panel" open>
+        <summary><strong>生成代码</strong><span id="codeFileLabel">等待生成</span></summary>
+        <pre id="codeView">尚未运行</pre>
+      </details>
+      <details class="detail-panel" open>
+        <summary><strong>测试输出</strong><span>pytest</span></summary>
+        <pre id="testView">尚未运行</pre>
+      </details>
+      <details class="detail-panel">
+        <summary><strong>测试文件</strong><span id="testFileLabel">等待生成</span></summary>
+        <pre id="testFileView">尚未运行</pre>
+      </details>
+      <details class="detail-panel">
+        <summary><strong>文件差异</strong><span>diff 详情</span></summary>
+        <pre id="diffView">尚未运行</pre>
+      </details>
+      <details class="detail-panel">
+        <summary><strong>原始模型日志</strong><span>调试用 transcript</span></summary>
+        <div class="log" id="transcript">点击“开始运行”后显示每一轮模型动作和本地工具观察。</div>
+      </details>
+      <details class="detail-panel" id="memory">
+        <summary><strong>项目记忆</strong><span>.agent/PROJECT_MEMORY.md</span></summary>
+        <pre id="memoryView">尚未运行</pre>
+      </details>
     </section>
   </main>
 

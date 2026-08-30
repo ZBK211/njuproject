@@ -5,6 +5,8 @@ const taskEl = document.getElementById("task");
 const flowEl = document.getElementById("flow");
 const transcriptEl = document.getElementById("transcript");
 const answerView = document.getElementById("answerView");
+const testSummary = document.getElementById("testSummary");
+const fileSummary = document.getElementById("fileSummary");
 const codeView = document.getElementById("codeView");
 const codeFileLabel = document.getElementById("codeFileLabel");
 const testView = document.getElementById("testView");
@@ -19,7 +21,6 @@ const historyView = document.getElementById("historyView");
 const resultLine = document.getElementById("resultLine");
 const evidenceRun = document.getElementById("evidenceRun");
 const evidenceTools = document.getElementById("evidenceTools");
-const evidenceTests = document.getElementById("evidenceTests");
 const stepsMetric = document.getElementById("stepsMetric");
 const testsMetric = document.getElementById("testsMetric");
 const memoryMetric = document.getElementById("memoryMetric");
@@ -136,6 +137,8 @@ async function runOnce(batchIndex = null, propagateError = false) {
   renderFlow(1, 0);
   transcriptEl.textContent = "后端正在重置演示工作区并运行 Agent...";
   answerView.textContent = "等待 final";
+  testSummary.textContent = "pytest 尚未执行。";
+  fileSummary.textContent = "文件变化尚未返回。";
   codeView.textContent = "等待生成";
   diffView.textContent = "等待 diff";
   testView.textContent = "等待测试";
@@ -147,7 +150,6 @@ async function runOnce(batchIndex = null, propagateError = false) {
   resultLine.textContent = "运行中：等待模型返回 JSON action。";
   evidenceRun.textContent = "正在创建独立 workspace。";
   evidenceTools.textContent = "工具轨迹尚未返回。";
-  evidenceTests.textContent = "pytest 尚未执行。";
   stepsMetric.textContent = "0";
   testsMetric.textContent = "-";
   memoryMetric.textContent = "-";
@@ -185,12 +187,14 @@ async function runOnce(batchIndex = null, propagateError = false) {
     memoryMetric.textContent = data.memory_recorded ? "yes" : "no";
     addHistory(data);
     const tools = (data.tool_calls || []).map((item) => item.tool).join(" -> ");
+    const changedFiles = (data.changed_files || []).join(", ");
     resultLine.textContent = `完成：run ${data.run_id || "-"} / ${data.model || "-"} / ${data.duration_ms || 0} ms / ${data.tests_passed ? "tests passed" : "tests need check"}`;
     evidenceRun.textContent = `本次 run id 是 ${data.run_id || "-"}，workspace 是 ${data.workspace || "unknown"}。`;
     evidenceTools.textContent = `工具轨迹：${tools || "无"}`;
-    evidenceTests.textContent = data.tests_passed
-      ? "pytest 已通过，说明文件修改后被真实测试验证。"
-      : "pytest 未通过或输出异常，需要查看测试输出。";
+    fileSummary.textContent = changedFiles || "没有检测到文件变化。";
+    testSummary.textContent = data.tests_passed
+      ? `测试通过：${compactTestOutput(data.test_output)}`
+      : `测试未通过：${compactTestOutput(data.test_output)}`;
     setStatus("done", "运行完成");
     return data;
   } catch (error) {
@@ -204,6 +208,16 @@ async function runOnce(batchIndex = null, propagateError = false) {
   } finally {
     if (!batchIndex) runBtn.disabled = false;
   }
+}
+
+function compactTestOutput(output) {
+  const lines = String(output || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const passedLine = [...lines].reverse().map((line) => {
+    const match = line.match(/(\d+\s+passed(?:\s+in\s+[\d.]+s)?)/);
+    return match ? match[1] : "";
+  }).find(Boolean);
+  const exitLine = lines.find((line) => line.startsWith("exit_code="));
+  return [exitLine, passedLine].filter(Boolean).join(" / ") || "没有测试输出";
 }
 
 function addHistory(data) {
